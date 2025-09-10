@@ -216,7 +216,10 @@ app.get('/api/health', (req, res) => {
 
 // Catch-all handler: send back React's index.html file for production
 if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
     const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
     res.sendFile(indexPath);
   });
