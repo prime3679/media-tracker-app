@@ -9,6 +9,9 @@ function App() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterType, setFilterType] = useState('all')
   const [formData, setFormData] = useState({
     title: '',
     mediaType: 'movie',
@@ -149,6 +152,22 @@ function App() {
     return status?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown'
   }
 
+  const filteredMediaItems = mediaItems.filter(item => {
+    // Search filter
+    const matchesSearch = searchQuery === '' || 
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.director?.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    // Status filter
+    const matchesStatus = filterStatus === 'all' || item.tracking?.status === filterStatus
+    
+    // Type filter
+    const matchesType = filterType === 'all' || item.mediaType === filterType
+    
+    return matchesSearch && matchesStatus && matchesType
+  })
+
   if (loading) {
     return (
       <div className="app">
@@ -199,6 +218,43 @@ function App() {
             >
               {showAddForm ? '✕ Cancel' : '+ Add Media'}
             </button>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="search-section">
+            <input
+              type="text"
+              className="search-input"
+              placeholder="🔍 Search by title, author, or director..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            
+            <div className="filter-row">
+              <select
+                className="filter-select"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="to_watch">To Watch/Read</option>
+                <option value="watching">Currently Watching/Reading</option>
+                <option value="completed">Completed</option>
+                <option value="on_hold">On Hold</option>
+                <option value="dropped">Dropped</option>
+              </select>
+              
+              <select
+                className="filter-select"
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+              >
+                <option value="all">All Types</option>
+                <option value="movie">🎬 Movies</option>
+                <option value="tv_show">📺 TV Shows</option>
+                <option value="book">📚 Books</option>
+              </select>
+            </div>
           </div>
 
           {showAddForm && (
@@ -253,13 +309,20 @@ function App() {
           )}
 
           <div className="media-list">
-            {mediaItems.length === 0 ? (
-              <div className="empty-state">
-                <p>📚 Your media library is empty</p>
-                <p>Add some movies, TV shows, or books to get started!</p>
-              </div>
+            {filteredMediaItems.length === 0 ? (
+              mediaItems.length === 0 ? (
+                <div className="empty-state">
+                  <p>📚 Your media library is empty</p>
+                  <p>Add some movies, TV shows, or books to get started!</p>
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>🔍 No matches found</p>
+                  <p>Try adjusting your search or filters</p>
+                </div>
+              )
             ) : (
-              mediaItems.map(item => (
+              filteredMediaItems.map(item => (
                 <div key={item.id} className="media-item">
                   <div className="media-header">
                     <span className="media-icon">{getMediaIcon(item.mediaType)}</span>

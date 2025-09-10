@@ -28,18 +28,38 @@ export const mediaAPI = {
   getMediaItems: () => apiCall('/media'),
 
   // Add new media item
-  addMediaItem: (mediaData) => 
-    apiCall('/media', {
+  addMediaItem: (mediaData) => {
+    // Fix rating validation: remove empty/null ratings completely
+    const cleanedData = { ...mediaData };
+    if (cleanedData.rating == null || cleanedData.rating === '') {
+      delete cleanedData.rating;
+    }
+    if (cleanedData.notes == null || cleanedData.notes === '') {
+      delete cleanedData.notes;
+    }
+    
+    return apiCall('/media', {
       method: 'POST',
-      body: JSON.stringify(mediaData),
-    }),
+      body: JSON.stringify(cleanedData),
+    });
+  },
 
   // Update media tracking
-  updateTracking: (mediaId, trackingData) =>
-    apiCall(`/media/${mediaId}/tracking`, {
+  updateTracking: (mediaId, trackingData) => {
+    // Fix rating validation: remove empty/null ratings completely
+    const cleanedData = { ...trackingData };
+    if (cleanedData.rating == null || cleanedData.rating === '') {
+      delete cleanedData.rating;
+    }
+    if (cleanedData.notes == null || cleanedData.notes === '') {
+      delete cleanedData.notes;
+    }
+    
+    return apiCall(`/media/${mediaId}/tracking`, {
       method: 'PUT',
-      body: JSON.stringify(trackingData),
-    }),
+      body: JSON.stringify(cleanedData),
+    });
+  },
 
   // Get statistics
   getStats: () => apiCall('/stats'),
