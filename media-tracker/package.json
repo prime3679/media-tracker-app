@@ -8,6 +8,7 @@
     "dev:client": "vite",
     "dev:api": "tsx watch server/api.ts",
     "build": "vite build",
+    "start": "NODE_ENV=production PORT=5000 tsx server/api.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate",
