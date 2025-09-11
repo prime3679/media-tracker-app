@@ -110,7 +110,7 @@ app.post('/api/media', async (req, res) => {
         userId: DEMO_USER_ID,
         mediaItemId: mediaItem.id,
         status: validatedData.status,
-        rating: validatedData.rating || null,
+        rating: validatedData.rating ? validatedData.rating.toString() : null,
         notes: validatedData.notes || null,
         progress: validatedData.progress,
         completedDate: validatedData.status === 'completed' ? new Date() : null
@@ -124,7 +124,7 @@ app.post('/api/media', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
         error: 'Invalid input data', 
-        details: error.errors 
+        details: error.issues 
       });
     }
     console.error('Error creating media item:', error);
@@ -164,7 +164,7 @@ app.put('/api/media/:id/tracking', async (req, res) => {
         userId: DEMO_USER_ID,
         mediaItemId,
         status: validatedData.status || 'to_watch',
-        rating: validatedData.rating || null,
+        rating: validatedData.rating ? validatedData.rating.toString() : null,
         notes: validatedData.notes || null,
         progress: validatedData.progress || 0,
         completedDate: validatedData.status === 'completed' ? new Date() : null
@@ -176,7 +176,7 @@ app.put('/api/media/:id/tracking', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
         error: 'Invalid input data', 
-        details: error.errors 
+        details: error.issues 
       });
     }
     console.error('Error updating tracking:', error);

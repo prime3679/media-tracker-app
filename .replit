@@ -43,6 +43,10 @@ externalPort = 3002
 localPort = 36403
 externalPort = 3000
 
+[[ports]]
+localPort = 39001
+externalPort = 3003
+
 [deployment]
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "cd media-tracker && npm start"]
