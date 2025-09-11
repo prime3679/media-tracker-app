@@ -45,5 +45,5 @@ externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["npm", "start"]
-build = ["npm", "run", "build"]
+run = ["bash", "-c", "cd media-tracker && npm start"]
+build = ["bash", "-c", "cd media-tracker && npm run build"]
