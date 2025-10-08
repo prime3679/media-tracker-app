@@ -1,4 +1,4 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-20", "postgresql-16"]
 [agent]
 expertMode = true
 integrations = ["javascript_database:1.0.0"]
@@ -51,3 +51,6 @@ externalPort = 3003
 deploymentTarget = "autoscale"
 run = ["npm", "--prefix", "media-tracker", "start"]
 build = ["bash", "-c", "npm --prefix media-tracker install && npm --prefix media-tracker run build"]
+
+[nix]
+channel = "stable-25_05"
