@@ -153,11 +153,13 @@ function App() {
   }
 
   const filteredMediaItems = mediaItems.filter(item => {
+    const normalizedQuery = searchQuery.trim().toLowerCase()
+
     // Search filter
-    const matchesSearch = searchQuery === '' || 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.director?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = normalizedQuery === '' ||
+      (item.title ?? '').toLowerCase().includes(normalizedQuery) ||
+      (item.author ?? '').toLowerCase().includes(normalizedQuery) ||
+      (item.director ?? '').toLowerCase().includes(normalizedQuery)
     
     // Status filter
     const matchesStatus = filterStatus === 'all' || item.tracking?.status === filterStatus
