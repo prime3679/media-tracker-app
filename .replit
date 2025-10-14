@@ -54,7 +54,7 @@ externalPort = 3003
 [deployment]
 deploymentTarget = "autoscale"
 run = ["npm", "--prefix", "media-tracker", "start"]
-build = ["bash", "-c", "npm --prefix media-tracker install && npm --prefix media-tracker run build"]
+build = ["sh", "-c", "cd media-tracker && npm install && npm run build"]
 
 [nix]
 channel = "stable-25_05"
