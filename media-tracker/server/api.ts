@@ -67,6 +67,11 @@ app.get('/api/media', async (req, res) => {
 });
 
 // Validation schemas
+const ratingSchema = z.union([
+  z.coerce.number().min(1).max(10),
+  z.literal(null)
+]).optional();
+
 const createMediaSchema = z.object({
   title: z.string().min(1).max(500),
   mediaType: z.enum(['movie', 'tv_show', 'book']),
@@ -75,14 +80,14 @@ const createMediaSchema = z.object({
   director: z.string().max(200).optional(),
   genres: z.string().max(500).optional(),
   status: z.enum(['to_watch', 'watching', 'completed', 'on_hold', 'dropped']).default('to_watch'),
-  rating: z.coerce.number().min(1).max(10).optional(),
+  rating: ratingSchema,
   notes: z.string().max(1000).optional(),
   progress: z.coerce.number().min(0).default(0)
 });
 
 const updateTrackingSchema = z.object({
   status: z.enum(['to_watch', 'watching', 'completed', 'on_hold', 'dropped']).optional(),
-  rating: z.coerce.number().min(1).max(10).optional(),
+  rating: ratingSchema,
   notes: z.string().max(1000).optional(),
   progress: z.coerce.number().min(0).optional()
 });
@@ -106,11 +111,14 @@ app.post('/api/media', async (req, res) => {
       }).returning();
 
       // Create tracking using same transaction
+      const hasRating = Object.prototype.hasOwnProperty.call(validatedData, 'rating');
+      const ratingValue = hasRating ? validatedData.rating : undefined;
+
       const [tracking] = await tx.insert(mediaTracking).values({
         userId: DEMO_USER_ID,
         mediaItemId: mediaItem.id,
         status: validatedData.status,
-        rating: validatedData.rating ? validatedData.rating.toString() : null,
+        rating: ratingValue === null || ratingValue === undefined ? null : ratingValue.toString(),
         notes: validatedData.notes || null,
         progress: validatedData.progress,
         completedDate: validatedData.status === 'completed' ? new Date() : null
@@ -144,7 +152,9 @@ app.put('/api/media/:id/tracking', async (req, res) => {
       // Update existing tracking
       const updates: any = {};
       if (validatedData.status !== undefined) updates.status = validatedData.status;
-      if (validatedData.rating !== undefined) updates.rating = validatedData.rating || null;
+      if (Object.prototype.hasOwnProperty.call(validatedData, 'rating')) {
+        updates.rating = validatedData.rating === null ? null : validatedData.rating.toString();
+      }
       if (validatedData.notes !== undefined) updates.notes = validatedData.notes || null;
       if (validatedData.progress !== undefined) updates.progress = validatedData.progress;
       
@@ -160,11 +170,14 @@ app.put('/api/media/:id/tracking', async (req, res) => {
       tracking = await storage.updateMediaTracking(tracking.id, updates);
     } else {
       // Create new tracking entry
+      const hasRating = Object.prototype.hasOwnProperty.call(validatedData, 'rating');
+      const ratingValue = hasRating ? validatedData.rating : undefined;
+
       tracking = await storage.createMediaTracking({
         userId: DEMO_USER_ID,
         mediaItemId,
         status: validatedData.status || 'to_watch',
-        rating: validatedData.rating ? validatedData.rating.toString() : null,
+        rating: ratingValue === null || ratingValue === undefined ? null : ratingValue.toString(),
         notes: validatedData.notes || null,
         progress: validatedData.progress || 0,
         completedDate: validatedData.status === 'completed' ? new Date() : null
