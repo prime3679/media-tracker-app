@@ -29,10 +29,9 @@ export const mediaAPI = {
 
   // Add new media item
   addMediaItem: (mediaData) => {
-    // Fix rating validation: remove empty/null ratings completely
     const cleanedData = { ...mediaData };
-    if (cleanedData.rating == null || cleanedData.rating === '') {
-      delete cleanedData.rating;
+    if (cleanedData.rating === '') {
+      cleanedData.rating = null;
     }
     if (cleanedData.notes == null || cleanedData.notes === '') {
       delete cleanedData.notes;
@@ -46,10 +45,9 @@ export const mediaAPI = {
 
   // Update media tracking
   updateTracking: (mediaId, trackingData) => {
-    // Fix rating validation: remove empty/null ratings completely
     const cleanedData = { ...trackingData };
-    if (cleanedData.rating == null || cleanedData.rating === '') {
-      delete cleanedData.rating;
+    if (cleanedData.rating === '') {
+      cleanedData.rating = null;
     }
     if (cleanedData.notes == null || cleanedData.notes === '') {
       delete cleanedData.notes;
