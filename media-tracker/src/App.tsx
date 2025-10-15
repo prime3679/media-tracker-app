@@ -12,6 +12,7 @@ import {
   type MediaTracking,
   type UpdateTrackingInput,
 } from './services/api';
+import { syncStore } from './lib/syncStore';
 
 type Tab = 'library' | 'stats';
 type StatusFilter = 'all' | MediaTracking['status'];
@@ -144,8 +145,16 @@ function App() {
   const [formData, setFormData] = useState<FormState>(INITIAL_FORM_STATE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadErrorDismissed, setLoadErrorDismissed] = useState(false);
+  const [syncPending, setSyncPending] = useState(0);
 
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const unsubscribe = syncStore.subscribe((count) => {
+      setSyncPending(count);
+    });
+    return unsubscribe;
+  }, []);
 
   const mediaQuery = useQuery({
     queryKey: mediaQueryKey,
@@ -401,6 +410,11 @@ function App() {
     <div className="app">
       <header className="header">
         <h1>📱 Media Tracker</h1>
+        {syncPending > 0 && (
+          <div className="sync-badge">
+            ⏳ Sync pending: {syncPending}
+          </div>
+        )}
       </header>
 
       {showErrorBanner && (

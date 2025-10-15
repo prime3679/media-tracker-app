@@ -6,6 +6,7 @@ import { mediaItems, mediaTracking } from '../../shared/schema.js';
 import { createMediaSchema, updateTrackingSchema } from '../../shared/schemas/index.js';
 import { writeRateLimiter } from '../middleware/security.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { idempotencyMiddleware } from '../middleware/idempotency.js';
 import authRouter from './auth.js';
 
 const router = express.Router();
@@ -35,7 +36,7 @@ router.get('/media', async (req, res) => {
   }
 });
 
-router.post('/media', writeRateLimiter, async (req, res) => {
+router.post('/media', idempotencyMiddleware, writeRateLimiter, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const validatedData = createMediaSchema.parse(req.body);
@@ -80,7 +81,7 @@ router.post('/media', writeRateLimiter, async (req, res) => {
   }
 });
 
-router.put('/media/:id/tracking', writeRateLimiter, async (req, res) => {
+router.put('/media/:id/tracking', idempotencyMiddleware, writeRateLimiter, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const mediaItemId = parseInt(req.params.id);
