@@ -1,11 +1,12 @@
-import { mediaItems, mediaTracking, users, type User, type InsertUser, type MediaItem, type InsertMediaItem, type MediaTracking, type InsertMediaTracking } from "../shared/schema.js";
+import { mediaItems, mediaTracking, users, refreshTokens, type User, type InsertUser, type MediaItem, type InsertMediaItem, type MediaTracking, type InsertMediaTracking, type RefreshToken, type InsertRefreshToken } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, lt } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(insertUser: InsertUser): Promise<User>;
   
   // Media item methods
@@ -18,6 +19,12 @@ export interface IStorage {
   getUserMediaTracking(userId: number): Promise<MediaTracking[]>;
   createMediaTracking(insertMediaTracking: InsertMediaTracking): Promise<MediaTracking>;
   updateMediaTracking(id: number, updates: Partial<MediaTracking>): Promise<MediaTracking>;
+  
+  getRefreshToken(token: string): Promise<RefreshToken | undefined>;
+  createRefreshToken(insertRefreshToken: InsertRefreshToken): Promise<RefreshToken>;
+  revokeRefreshToken(token: string): Promise<void>;
+  revokeAllUserRefreshTokens(userId: number): Promise<void>;
+  deleteExpiredRefreshTokens(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -28,6 +35,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user || undefined;
   }
 
@@ -83,6 +95,42 @@ export class DatabaseStorage implements IStorage {
       .where(eq(mediaTracking.id, id))
       .returning();
     return tracking;
+  }
+
+  async getRefreshToken(token: string): Promise<RefreshToken | undefined> {
+    const [refreshToken] = await db
+      .select()
+      .from(refreshTokens)
+      .where(eq(refreshTokens.token, token));
+    return refreshToken || undefined;
+  }
+
+  async createRefreshToken(insertRefreshToken: InsertRefreshToken): Promise<RefreshToken> {
+    const [refreshToken] = await db
+      .insert(refreshTokens)
+      .values(insertRefreshToken)
+      .returning();
+    return refreshToken;
+  }
+
+  async revokeRefreshToken(token: string): Promise<void> {
+    await db
+      .update(refreshTokens)
+      .set({ revokedAt: new Date() })
+      .where(eq(refreshTokens.token, token));
+  }
+
+  async revokeAllUserRefreshTokens(userId: number): Promise<void> {
+    await db
+      .update(refreshTokens)
+      .set({ revokedAt: new Date() })
+      .where(eq(refreshTokens.userId, userId));
+  }
+
+  async deleteExpiredRefreshTokens(): Promise<void> {
+    await db
+      .delete(refreshTokens)
+      .where(lt(refreshTokens.expiresAt, new Date()));
   }
 }
 

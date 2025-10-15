@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, decimal, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, timestamp, decimal, pgEnum, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Enums for media types and status
@@ -10,6 +10,7 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   username: text('username').notNull().unique(),
   email: text('email').notNull().unique(),
+  password: text('password').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -33,7 +34,9 @@ export const mediaItems = pgTable('media_items', {
   totalPages: integer('total_pages'), // For books
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdUpdatedAtIdx: index('media_items_user_id_updated_at_idx').on(table.userId, table.updatedAt),
+}));
 
 // User's tracking of media items
 export const mediaTracking = pgTable('media_tracking', {
@@ -48,12 +51,28 @@ export const mediaTracking = pgTable('media_tracking', {
   completedDate: timestamp('completed_date'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdStatusIdx: index('media_tracking_user_id_status_idx').on(table.userId, table.status),
+  userIdUpdatedAtIdx: index('media_tracking_user_id_updated_at_idx').on(table.userId, table.updatedAt),
+}));
+
+export const refreshTokens = pgTable('refresh_tokens', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  revokedAt: timestamp('revoked_at'),
+}, (table) => ({
+  userIdIdx: index('refresh_tokens_user_id_idx').on(table.userId),
+  tokenIdx: index('refresh_tokens_token_idx').on(table.token),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   mediaItems: many(mediaItems),
   mediaTracking: many(mediaTracking),
+  refreshTokens: many(refreshTokens),
 }));
 
 export const mediaItemsRelations = relations(mediaItems, ({ one, many }) => ({
@@ -75,6 +94,13 @@ export const mediaTrackingRelations = relations(mediaTracking, ({ one }) => ({
   }),
 }));
 
+export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [refreshTokens.userId],
+    references: [users.id],
+  }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -82,3 +108,5 @@ export type MediaItem = typeof mediaItems.$inferSelect;
 export type InsertMediaItem = typeof mediaItems.$inferInsert;
 export type MediaTracking = typeof mediaTracking.$inferSelect;
 export type InsertMediaTracking = typeof mediaTracking.$inferInsert;
+export type RefreshToken = typeof refreshTokens.$inferSelect;
+export type InsertRefreshToken = typeof refreshTokens.$inferInsert;

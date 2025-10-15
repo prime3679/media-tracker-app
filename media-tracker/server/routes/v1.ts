@@ -5,14 +5,20 @@ import { db } from '../db.js';
 import { mediaItems, mediaTracking } from '../../shared/schema.js';
 import { createMediaSchema, updateTrackingSchema } from '../../shared/schemas/index.js';
 import { writeRateLimiter } from '../middleware/security.js';
+import { authenticateToken } from '../middleware/auth.js';
+import authRouter from './auth.js';
 
 const router = express.Router();
-const DEMO_USER_ID = 1;
 
-router.get('/media', async (_req, res) => {
+router.use('/auth', authRouter);
+
+router.use(authenticateToken);
+
+router.get('/media', async (req, res) => {
   try {
-    const mediaItemsList = await storage.getUserMediaItems(DEMO_USER_ID);
-    const tracking = await storage.getUserMediaTracking(DEMO_USER_ID);
+    const userId = req.user!.userId;
+    const mediaItemsList = await storage.getUserMediaItems(userId);
+    const tracking = await storage.getUserMediaTracking(userId);
     
     const mediaWithTracking = mediaItemsList.map(item => {
       const trackingData = tracking.find(t => t.mediaItemId === item.id);
@@ -31,11 +37,12 @@ router.get('/media', async (_req, res) => {
 
 router.post('/media', writeRateLimiter, async (req, res) => {
   try {
+    const userId = req.user!.userId;
     const validatedData = createMediaSchema.parse(req.body);
     
     const result = await db.transaction(async (tx) => {
       const [mediaItem] = await tx.insert(mediaItems).values({
-        userId: DEMO_USER_ID,
+        userId,
         title: validatedData.title,
         mediaType: validatedData.mediaType,
         description: validatedData.description || null,
@@ -48,7 +55,7 @@ router.post('/media', writeRateLimiter, async (req, res) => {
       const ratingValue = hasRating ? validatedData.rating : undefined;
 
       const [tracking] = await tx.insert(mediaTracking).values({
-        userId: DEMO_USER_ID,
+        userId,
         mediaItemId: mediaItem.id,
         status: validatedData.status,
         rating: ratingValue === null || ratingValue === undefined ? null : ratingValue.toString(),
@@ -75,10 +82,11 @@ router.post('/media', writeRateLimiter, async (req, res) => {
 
 router.put('/media/:id/tracking', writeRateLimiter, async (req, res) => {
   try {
+    const userId = req.user!.userId;
     const mediaItemId = parseInt(req.params.id);
     const validatedData = updateTrackingSchema.parse(req.body);
     
-    let tracking = await storage.getMediaTracking(DEMO_USER_ID, mediaItemId);
+    let tracking = await storage.getMediaTracking(userId, mediaItemId);
     
     if (tracking) {
       const updates: Record<string, unknown> = {};
@@ -103,7 +111,7 @@ router.put('/media/:id/tracking', writeRateLimiter, async (req, res) => {
       const ratingValue = hasRating ? validatedData.rating : undefined;
 
       tracking = await storage.createMediaTracking({
-        userId: DEMO_USER_ID,
+        userId,
         mediaItemId,
         status: validatedData.status || 'to_watch',
         rating: ratingValue === null || ratingValue === undefined ? null : ratingValue.toString(),
@@ -126,10 +134,11 @@ router.put('/media/:id/tracking', writeRateLimiter, async (req, res) => {
   }
 });
 
-router.get('/stats', async (_req, res) => {
+router.get('/stats', async (req, res) => {
   try {
-    const mediaItemsList = await storage.getUserMediaItems(DEMO_USER_ID);
-    const tracking = await storage.getUserMediaTracking(DEMO_USER_ID);
+    const userId = req.user!.userId;
+    const mediaItemsList = await storage.getUserMediaItems(userId);
+    const tracking = await storage.getUserMediaTracking(userId);
     
     const stats = {
       totalItems: mediaItemsList.length,

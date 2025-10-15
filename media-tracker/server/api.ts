@@ -7,6 +7,7 @@ import { db } from './db.js';
 import { mediaItems, mediaTracking } from '../shared/schema.js';
 import { createMediaSchema, updateTrackingSchema } from '../shared/schemas/index.js';
 import { requestIdMiddleware, helmetMiddleware, getCorsOptions, writeRateLimiter } from './middleware/security.js';
+import { authenticateToken } from './middleware/auth.js';
 import v1Router from './routes/v1.js';
 import { generateOpenApiSpec } from './utils/openapi.js';
 import path from 'path';
@@ -30,24 +31,9 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(distPath));
 }
 
-// Default user ID (for demo purposes)
-const DEMO_USER_ID = 1;
-
-// Ensure demo user exists
-const ensureDemoUser = async () => {
-  try {
-    let user = await storage.getUser(DEMO_USER_ID);
-    if (!user) {
-      user = await storage.createUser({
-        username: 'demo_user',
-        email: 'demo@mediatracker.app'
-      });
-      console.log('Demo user created:', user);
-    }
-  } catch (error) {
-    console.error('Error ensuring demo user:', error);
-  }
-};
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
 
 const openApiSpec = generateOpenApiSpec();
 app.get('/api/docs/openapi.json', (_req, res) => {
@@ -57,13 +43,14 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
 app.use('/api/v1', v1Router);
 
-// Routes
+app.use('/api', authenticateToken);
 
 // Get all media items for user
-app.get('/api/media', async (_req, res) => {
+app.get('/api/media', async (req, res) => {
   try {
-    const mediaItems = await storage.getUserMediaItems(DEMO_USER_ID);
-    const tracking = await storage.getUserMediaTracking(DEMO_USER_ID);
+    const userId = req.user!.userId;
+    const mediaItems = await storage.getUserMediaItems(userId);
+    const tracking = await storage.getUserMediaTracking(userId);
     
     // Combine media items with their tracking data
     const mediaWithTracking = mediaItems.map(item => {
@@ -84,13 +71,14 @@ app.get('/api/media', async (_req, res) => {
 // Add new media item with proper transaction
 app.post('/api/media', writeRateLimiter, async (req, res) => {
   try {
+    const userId = req.user!.userId;
     const validatedData = createMediaSchema.parse(req.body);
     
     // Use transaction to ensure atomicity - implement DB calls directly
     const result = await db.transaction(async (tx) => {
       // Create media item using transaction
       const [mediaItem] = await tx.insert(mediaItems).values({
-        userId: DEMO_USER_ID,
+        userId,
         title: validatedData.title,
         mediaType: validatedData.mediaType,
         description: validatedData.description || null,
@@ -104,7 +92,7 @@ app.post('/api/media', writeRateLimiter, async (req, res) => {
       const ratingValue = hasRating ? validatedData.rating : undefined;
 
       const [tracking] = await tx.insert(mediaTracking).values({
-        userId: DEMO_USER_ID,
+        userId,
         mediaItemId: mediaItem.id,
         status: validatedData.status,
         rating: ratingValue === null || ratingValue === undefined ? null : ratingValue.toString(),
@@ -132,10 +120,11 @@ app.post('/api/media', writeRateLimiter, async (req, res) => {
 // Update tracking for a media item
 app.put('/api/media/:id/tracking', writeRateLimiter, async (req, res) => {
   try {
+    const userId = req.user!.userId;
     const mediaItemId = parseInt(req.params.id);
     const validatedData = updateTrackingSchema.parse(req.body);
     
-    let tracking = await storage.getMediaTracking(DEMO_USER_ID, mediaItemId);
+    let tracking = await storage.getMediaTracking(userId, mediaItemId);
     
     if (tracking) {
       // Update existing tracking
@@ -163,7 +152,7 @@ app.put('/api/media/:id/tracking', writeRateLimiter, async (req, res) => {
       const ratingValue = hasRating ? validatedData.rating : undefined;
 
       tracking = await storage.createMediaTracking({
-        userId: DEMO_USER_ID,
+        userId,
         mediaItemId,
         status: validatedData.status || 'to_watch',
         rating: ratingValue === null || ratingValue === undefined ? null : ratingValue.toString(),
@@ -187,10 +176,11 @@ app.put('/api/media/:id/tracking', writeRateLimiter, async (req, res) => {
 });
 
 // Get statistics
-app.get('/api/stats', async (_req, res) => {
+app.get('/api/stats', async (req, res) => {
   try {
-    const mediaItems = await storage.getUserMediaItems(DEMO_USER_ID);
-    const tracking = await storage.getUserMediaTracking(DEMO_USER_ID);
+    const userId = req.user!.userId;
+    const mediaItems = await storage.getUserMediaItems(userId);
+    const tracking = await storage.getUserMediaTracking(userId);
     
     const stats = {
       totalItems: mediaItems.length,
@@ -211,11 +201,6 @@ app.get('/api/stats', async (_req, res) => {
   }
 });
 
-// Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
-
 // Catch-all handler: send back React's index.html file for production
 if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {
@@ -229,8 +214,6 @@ if (process.env.NODE_ENV === 'production') {
 
 // Start server
 const startServer = async () => {
-  await ensureDemoUser();
-  
   app.listen(PORT, () => {
     console.log(`Media Tracker API server running on port ${PORT}`);
   });
