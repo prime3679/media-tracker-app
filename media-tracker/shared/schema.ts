@@ -101,6 +101,27 @@ export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
   }),
 }));
 
+export const idempotencyKeys = pgTable('idempotency_keys', {
+  id: serial('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  userId: integer('user_id').notNull(),
+  endpoint: text('endpoint').notNull(),
+  responseStatus: integer('response_status'),
+  responseBody: text('response_body'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+}, (table) => ({
+  keyIdx: index('idempotency_keys_key_idx').on(table.key),
+  expiresAtIdx: index('idempotency_keys_expires_at_idx').on(table.expiresAt),
+}));
+
+export const idempotencyKeysRelations = relations(idempotencyKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [idempotencyKeys.userId],
+    references: [users.id],
+  }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -110,3 +131,5 @@ export type MediaTracking = typeof mediaTracking.$inferSelect;
 export type InsertMediaTracking = typeof mediaTracking.$inferInsert;
 export type RefreshToken = typeof refreshTokens.$inferSelect;
 export type InsertRefreshToken = typeof refreshTokens.$inferInsert;
+export type IdempotencyKey = typeof idempotencyKeys.$inferSelect;
+export type InsertIdempotencyKey = typeof idempotencyKeys.$inferInsert;

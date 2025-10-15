@@ -105,11 +105,18 @@ async function apiCall<TResponse, TBody = unknown>(
   parser: z.ZodType<TResponse>,
 ): Promise<TResponse> {
   const { endpoint, method = 'GET', body, signal } = options;
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (method === 'POST' || method === 'PUT') {
+    headers['Idempotency-Key'] = crypto.randomUUID();
+  }
+  
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
     signal,
   });
