@@ -1,9 +1,28 @@
 const API_BASE = '/api';
 
-// Helper function for API calls
-const apiCall = async (endpoint, options = {}) => {
+interface MediaData {
+  title: string;
+  mediaType: 'movie' | 'tv_show' | 'book';
+  description?: string;
+  author?: string;
+  director?: string;
+  genres?: string;
+  status?: 'to_watch' | 'watching' | 'completed' | 'on_hold' | 'dropped';
+  rating?: number | null | '';
+  notes?: string;
+  progress?: number;
+}
+
+interface TrackingData {
+  status?: 'to_watch' | 'watching' | 'completed' | 'on_hold' | 'dropped';
+  rating?: number | null | '';
+  notes?: string;
+  progress?: number;
+}
+
+const apiCall = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   const url = `${API_BASE}${endpoint}`;
-  const config = {
+  const config: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -22,13 +41,10 @@ const apiCall = async (endpoint, options = {}) => {
   }
 };
 
-// Media API methods
 export const mediaAPI = {
-  // Get all media items
-  getMediaItems: () => apiCall('/media'),
+  getMediaItems: () => apiCall<unknown[]>('/media'),
 
-  // Add new media item
-  addMediaItem: (mediaData) => {
+  addMediaItem: (mediaData: MediaData) => {
     const cleanedData = { ...mediaData };
     if (cleanedData.rating === '') {
       cleanedData.rating = null;
@@ -37,14 +53,13 @@ export const mediaAPI = {
       delete cleanedData.notes;
     }
     
-    return apiCall('/media', {
+    return apiCall<unknown>('/media', {
       method: 'POST',
       body: JSON.stringify(cleanedData),
     });
   },
 
-  // Update media tracking
-  updateTracking: (mediaId, trackingData) => {
+  updateTracking: (mediaId: number, trackingData: TrackingData) => {
     const cleanedData = { ...trackingData };
     if (cleanedData.rating === '') {
       cleanedData.rating = null;
@@ -53,15 +68,13 @@ export const mediaAPI = {
       delete cleanedData.notes;
     }
     
-    return apiCall(`/media/${mediaId}/tracking`, {
+    return apiCall<unknown>(`/media/${mediaId}/tracking`, {
       method: 'PUT',
       body: JSON.stringify(cleanedData),
     });
   },
 
-  // Get statistics
-  getStats: () => apiCall('/stats'),
+  getStats: () => apiCall<unknown>('/stats'),
 
-  // Health check
-  healthCheck: () => apiCall('/health'),
+  healthCheck: () => apiCall<{ status: string; timestamp: string }>('/health'),
 };

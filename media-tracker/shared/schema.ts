@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, decimal, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, timestamp, decimal, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Enums for media types and status
