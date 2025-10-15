@@ -10,7 +10,7 @@
     "build": "tsc && vite build",
     "start": "NODE_ENV=production PORT=5000 tsx server/api.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.app.json --noEmit",
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
