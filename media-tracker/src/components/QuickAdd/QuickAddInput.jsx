@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './QuickAdd.css';
 
-export default function QuickAddInput({ onSearch, onSelect, selectedIndex }) {
+export default function QuickAddInput({ onSearch, onSelect, onNavigate, selectedIndex }) {
   const [query, setQuery] = useState('');
   const inputRef = useRef(null);
 
@@ -19,9 +19,19 @@ export default function QuickAddInput({ onSearch, onSelect, selectedIndex }) {
   }, [query, onSearch]);
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && selectedIndex >= 0) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      onNavigate('down');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      onNavigate('up');
+    } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault();
       onSelect();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setQuery('');
+      inputRef.current?.focus();
     }
   };
 

@@ -22,10 +22,11 @@ export default function QuickAdd({ onAdd }) {
     try {
       const results = await searchImportAPI(query);
       setCandidates(results);
-      setSelectedIndex(results.length > 0 ? 0 : -1);
+      setSelectedIndex(-1);
     } catch (error) {
       console.error('Search failed:', error);
       setCandidates([]);
+      setSelectedIndex(-1);
     } finally {
       setIsSearching(false);
     }
@@ -37,9 +38,26 @@ export default function QuickAdd({ onAdd }) {
     }
   }, [candidates]);
 
-  const handleNavigate = useCallback((newIndex) => {
-    setSelectedIndex(newIndex);
-  }, []);
+  const handleNavigate = useCallback((direction) => {
+    setSelectedIndex(prevIndex => {
+      if (candidates.length === 0) {
+        return -1;
+      }
+      
+      if (direction === 'down') {
+        if (prevIndex === -1) {
+          return 0;
+        }
+        return Math.min(prevIndex + 1, candidates.length - 1);
+      } else if (direction === 'up') {
+        if (prevIndex <= 0) {
+          return -1;
+        }
+        return prevIndex - 1;
+      }
+      return prevIndex;
+    });
+  }, [candidates.length]);
 
   const handleConfirm = useCallback((item) => {
     onAdd(item);
@@ -57,6 +75,7 @@ export default function QuickAdd({ onAdd }) {
       <QuickAddInput
         onSearch={handleSearch}
         onSelect={() => handleSelectCandidate(selectedIndex)}
+        onNavigate={handleNavigate}
         selectedIndex={selectedIndex}
       />
       
