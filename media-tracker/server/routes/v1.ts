@@ -8,12 +8,19 @@ import { writeRateLimiter } from '../middleware/security.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { idempotencyMiddleware } from '../middleware/idempotency.js';
 import authRouter from './auth.js';
+import importRouter from './import.js';
+import searchRouter from './search.js';
+import nextRouter from './next.js';
 
 const router = express.Router();
 
 router.use('/auth', authRouter);
 
 router.use(authenticateToken);
+
+router.use('/import', importRouter);
+router.use('/search', searchRouter);
+router.use('/next', nextRouter);
 
 router.get('/media', async (req, res) => {
   try {

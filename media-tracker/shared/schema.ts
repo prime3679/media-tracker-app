@@ -1,5 +1,5 @@
 import { pgTable, serial, text, integer, timestamp, decimal, pgEnum, index } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 // Enums for media types and status
 export const mediaTypeEnum = pgEnum('media_type', ['movie', 'tv_show', 'book']);
@@ -36,6 +36,12 @@ export const mediaItems = pgTable('media_items', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   userIdUpdatedAtIdx: index('media_items_user_id_updated_at_idx').on(table.userId, table.updatedAt),
+  titleTrigramIdx: index('media_items_title_trigram_idx').using('gin', sql`${table.title} gin_trgm_ops`),
+  searchVectorIdx: index('media_items_search_vector_idx').using('gin', sql`(
+    setweight(to_tsvector('english', coalesce(${table.title}, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(${table.director}, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(${table.author}, '')), 'B')
+  )`),
 }));
 
 // User's tracking of media items
