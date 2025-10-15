@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { mediaAPI } from './services/api.js'
+import QuickAdd from './components/QuickAdd/QuickAdd'
 import './App.css'
 
 function App() {
@@ -211,12 +212,43 @@ function App() {
 
       {activeTab === 'library' && (
         <main className="main">
+          <div className="quick-add-section">
+            <h2 style={{ marginBottom: '16px', fontSize: '18px', color: '#1a1a1a' }}>⚡ Quick Add</h2>
+            <QuickAdd onAdd={(item) => {
+              // Convert import data to API format
+              const apiData = {
+                title: item.title,
+                mediaType: item.type,
+                description: item.description || '',
+                author: item.author || '',
+                director: item.director || '',
+                genres: '',
+                status: item.status,
+                rating: '',
+                notes: ''
+              };
+              
+              // Add via API
+              mediaAPI.addMediaItem(apiData).then(newItem => {
+                setMediaItems(prev => [...prev, newItem]);
+                mediaAPI.getStats().then(setStats);
+              }).catch(err => {
+                console.error('Failed to add:', err);
+                setError('Failed to add item');
+              });
+            }} />
+          </div>
+
+          <div style={{ margin: '24px 0', textAlign: 'center', color: '#999' }}>
+            <span>or</span>
+          </div>
+
           <div className="add-section">
             <button 
               className="add-button"
               onClick={() => setShowAddForm(!showAddForm)}
             >
-              {showAddForm ? '✕ Cancel' : '+ Add Media'}
+              {showAddForm ? '✕ Cancel' : '+ Add Manually'}
             </button>
           </div>
 
