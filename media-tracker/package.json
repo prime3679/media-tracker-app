@@ -50,6 +50,7 @@
     "@playwright/test": "^1.56.0",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
+    "@types/serviceworker": "^0.0.158",
     "@types/supertest": "^6.0.3",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^10.0.0",

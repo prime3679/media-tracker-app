@@ -2,7 +2,7 @@ import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { Queue } from 'workbox-background-sync';
 
-declare let self: ServiceWorkerGlobalScope;
+declare const self: ServiceWorkerGlobalScope;
 
 self.skipWaiting();
 self.clients.claim();
@@ -108,7 +108,7 @@ async function broadcastSyncStatus() {
   const queueSize = await writeQueue.size();
   const clients = await self.clients.matchAll();
   
-  clients.forEach(client => {
+  clients.forEach((client) => {
     client.postMessage({
       type: 'SYNC_STATUS',
       pendingCount: queueSize,
@@ -129,7 +129,7 @@ self.addEventListener('message', async (event) => {
 });
 
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'writeQueue') {
+  if ('tag' in event && event.tag === 'writeQueue') {
     event.waitUntil(writeQueue.replayRequests());
   }
 });
