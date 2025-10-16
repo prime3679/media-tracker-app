@@ -1,20 +1,29 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import './App.css';
 import {
   mediaApi,
   mediaQueryKey,
   statsQueryKey,
+  importApi,
+  nextApi,
+  nextQueryKey,
+  searchApi,
+  buildSearchQueryKey,
   type CreateMediaInput,
   type MediaItem,
   type MediaList,
   type MediaStats,
   type MediaTracking,
   type UpdateTrackingInput,
+  type ImportApplyInput,
+  type ImportSearchResult,
+  type NextUpItem,
+  type SearchResultItem,
 } from './services/api';
 import { syncStore } from './lib/syncStore';
 
-type Tab = 'library' | 'stats';
+type Tab = 'library' | 'stats' | 'search';
 type StatusFilter = 'all' | MediaTracking['status'];
 type TypeFilter = 'all' | MediaItem['mediaType'];
 
@@ -34,6 +43,13 @@ interface UpdateTrackingPayload {
 interface UpdateTrackingContext {
   previousMedia: MediaList | undefined;
   previousStats: MediaStats | undefined;
+}
+
+type ImportSearchCategory = 'movie' | 'tv' | 'book';
+
+interface QuickAddOption extends ImportSearchResult {
+  type: ImportApplyInput['type'];
+  sourceCategory: ImportSearchCategory;
 }
 
 interface FormState {
@@ -67,6 +83,15 @@ const TYPE_TO_STATS_KEY: Record<MediaItem['mediaType'], keyof MediaStats> = {
 };
 
 const nowIsoString = () => new Date().toISOString();
+
+const mapCategoryToMediaType = (category: ImportSearchCategory): MediaItem['mediaType'] =>
+  category === 'tv' ? 'tv_show' : category;
+
+const mapCategoryToApplyType = (category: ImportSearchCategory): ImportApplyInput['type'] =>
+  mapCategoryToMediaType(category);
+
+const QUICK_ADD_MIN_QUERY_LENGTH = 2;
+const QUICK_ADD_DEBOUNCE_MS = 300;
 
 const buildCreateInput = (form: FormState): CreateMediaInput => ({
   title: form.title.trim(),
@@ -139,15 +164,36 @@ const adjustStatsForStatusChange = (
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('library');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [librarySearchQuery, setLibrarySearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
   const [filterType, setFilterType] = useState<TypeFilter>('all');
   const [formData, setFormData] = useState<FormState>(INITIAL_FORM_STATE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadErrorDismissed, setLoadErrorDismissed] = useState(false);
   const [syncPending, setSyncPending] = useState(0);
+  const [quickAddQuery, setQuickAddQuery] = useState('');
+  const [quickAddType, setQuickAddType] = useState<ImportSearchCategory>('movie');
+  const [quickAddOptions, setQuickAddOptions] = useState<QuickAddOption[]>([]);
+  const [quickAddLoading, setQuickAddLoading] = useState(false);
+  const [quickAddError, setQuickAddError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const queryClient = useQueryClient();
+  const quickAddAbortController = useRef<AbortController | null>(null);
+  const quickAddDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const quickAddInputId = useId();
+  const quickAddTypeId = useId();
+  const quickAddHeadingId = useId();
+  const quickAddHelperId = useId();
+  const nextUpHeadingId = useId();
+  const librarySearchInputId = useId();
+  const librarySearchHeadingId = useId();
+  const statusFilterId = useId();
+  const typeFilterId = useId();
+  const globalSearchInputId = useId();
+  const searchScreenHeadingId = useId();
+  const searchScreenHelperId = useId();
 
   useEffect(() => {
     const unsubscribe = syncStore.subscribe((count) => {
@@ -166,6 +212,83 @@ function App() {
     queryFn: () => mediaApi.stats(),
   });
 
+  const nextUpQuery = useQuery<NextUpItem[]>({
+    queryKey: nextQueryKey,
+    queryFn: () => nextApi.list(),
+    enabled: activeTab === 'library',
+  });
+
+  const trimmedSearchTerm = searchTerm.trim();
+
+  const searchResultsQuery = useQuery<SearchResultItem[]>({
+    queryKey: buildSearchQueryKey(trimmedSearchTerm),
+    queryFn: () => searchApi.search(trimmedSearchTerm),
+    enabled: trimmedSearchTerm.length > 0 && activeTab === 'search',
+  });
+
+  useEffect(() => {
+    if (quickAddDebounceRef.current) {
+      clearTimeout(quickAddDebounceRef.current);
+      quickAddDebounceRef.current = null;
+    }
+
+    quickAddAbortController.current?.abort();
+
+    if (quickAddQuery.trim().length < QUICK_ADD_MIN_QUERY_LENGTH) {
+      setQuickAddOptions([]);
+      setQuickAddLoading(false);
+      if (quickAddQuery.trim().length === 0) {
+        setQuickAddError(null);
+      }
+      quickAddAbortController.current = null;
+      return;
+    }
+
+    setQuickAddLoading(true);
+    setQuickAddError(null);
+
+    const controller = new AbortController();
+    quickAddAbortController.current = controller;
+    const requestCategory = quickAddType;
+    const requestQuery = quickAddQuery.trim();
+
+    const timeoutId = setTimeout(() => {
+      importApi
+        .search(requestQuery, requestCategory, controller.signal)
+        .then((results) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+          const applyType = mapCategoryToApplyType(requestCategory);
+          setQuickAddOptions(
+            results.map((result) => ({
+              ...result,
+              type: applyType,
+              sourceCategory: requestCategory,
+            })),
+          );
+          setQuickAddLoading(false);
+          quickAddAbortController.current = null;
+        })
+        .catch((error) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+          setQuickAddError('Unable to fetch quick add suggestions right now.');
+          setQuickAddLoading(false);
+          quickAddAbortController.current = null;
+          console.error('Quick add search failed:', error);
+        });
+    }, QUICK_ADD_DEBOUNCE_MS);
+
+    quickAddDebounceRef.current = timeoutId;
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [quickAddQuery, quickAddType]);
+
   const createMediaMutation = useMutation<MediaItem, MutationError, CreateMediaInput, CreateMediaContext>({
     mutationFn: (input) => mediaApi.create(input),
     onMutate: async (input) => {
@@ -173,6 +296,7 @@ function App() {
       setLoadErrorDismissed(false);
       await queryClient.cancelQueries({ queryKey: mediaQueryKey });
       await queryClient.cancelQueries({ queryKey: statsQueryKey });
+      await queryClient.cancelQueries({ queryKey: nextQueryKey });
 
       const previousMedia = queryClient.getQueryData<MediaList>(mediaQueryKey);
       const previousStats = queryClient.getQueryData<MediaStats>(statsQueryKey);
@@ -209,6 +333,76 @@ function App() {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: mediaQueryKey });
       void queryClient.invalidateQueries({ queryKey: statsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: nextQueryKey });
+    },
+  });
+
+  const quickAddMutation = useMutation<MediaItem, MutationError, QuickAddOption, CreateMediaContext>({
+    mutationFn: (option) =>
+      importApi.apply({
+        title: option.title,
+        year: option.year ?? undefined,
+        poster: option.poster ?? null,
+        external_id: option.external_id,
+        type: option.type,
+      }),
+    onMutate: async (option) => {
+      setErrorMessage(null);
+      setLoadErrorDismissed(false);
+      setQuickAddError(null);
+      await queryClient.cancelQueries({ queryKey: mediaQueryKey });
+      await queryClient.cancelQueries({ queryKey: statsQueryKey });
+      await queryClient.cancelQueries({ queryKey: nextQueryKey });
+
+      const previousMedia = queryClient.getQueryData<MediaList>(mediaQueryKey);
+      const previousStats = queryClient.getQueryData<MediaStats>(statsQueryKey);
+      const tempId = -Date.now();
+
+      const createInput: CreateMediaInput = {
+        title: option.title,
+        mediaType: option.type as MediaItem['mediaType'],
+        status: 'to_watch',
+        rating: null,
+        notes: undefined,
+        progress: 0,
+      } satisfies CreateMediaInput;
+
+      const optimisticItem = createOptimisticMediaItem(createInput, tempId);
+
+      queryClient.setQueryData<MediaList>(mediaQueryKey, (items = []) => [...items, optimisticItem]);
+      if (previousStats) {
+        queryClient.setQueryData<MediaStats>(
+          statsQueryKey,
+          adjustStatsForCreate(previousStats, optimisticItem),
+        );
+      }
+
+      setQuickAddOptions((options) => options.filter((candidate) => candidate.external_id !== option.external_id));
+
+      return { previousMedia, previousStats, tempId } satisfies CreateMediaContext;
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previousMedia) {
+        queryClient.setQueryData(mediaQueryKey, context.previousMedia);
+      }
+      if (context?.previousStats) {
+        queryClient.setQueryData(statsQueryKey, context.previousStats);
+      }
+      setQuickAddError('Failed to import the selected item. Please try again.');
+      setErrorMessage('Failed to import the selected item. Please try again.');
+      console.error('Failed to import media item:', error);
+    },
+    onSuccess: (created, _variables, context) => {
+      queryClient.setQueryData<MediaList>(mediaQueryKey, (items = []) =>
+        items.map((item) => (item.id === context?.tempId ? created : item)),
+      );
+      setQuickAddQuery('');
+      setQuickAddOptions([]);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: mediaQueryKey });
+      void queryClient.invalidateQueries({ queryKey: statsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: nextQueryKey });
     },
   });
 
@@ -219,6 +413,7 @@ function App() {
       setLoadErrorDismissed(false);
       await queryClient.cancelQueries({ queryKey: mediaQueryKey });
       await queryClient.cancelQueries({ queryKey: statsQueryKey });
+      await queryClient.cancelQueries({ queryKey: nextQueryKey });
 
       const previousMedia = queryClient.getQueryData<MediaList>(mediaQueryKey);
       const previousStats = queryClient.getQueryData<MediaStats>(statsQueryKey);
@@ -296,6 +491,7 @@ function App() {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: mediaQueryKey });
       void queryClient.invalidateQueries({ queryKey: statsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: nextQueryKey });
     },
   });
 
@@ -309,11 +505,12 @@ function App() {
     if (!mediaQuery.data) return [] as MediaList;
 
     return mediaQuery.data.filter((item) => {
+      const trimmedQuery = librarySearchQuery.trim().toLowerCase();
       const matchesSearch =
-        searchQuery.trim() === '' ||
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.director?.toLowerCase().includes(searchQuery.toLowerCase());
+        trimmedQuery === '' ||
+        item.title.toLowerCase().includes(trimmedQuery) ||
+        item.author?.toLowerCase().includes(trimmedQuery) ||
+        item.director?.toLowerCase().includes(trimmedQuery);
 
       const matchesStatus =
         filterStatus === 'all' || item.tracking?.status === filterStatus;
@@ -322,7 +519,7 @@ function App() {
 
       return matchesSearch && matchesStatus && matchesType;
     });
-  }, [mediaQuery.data, searchQuery, filterStatus, filterType]);
+  }, [mediaQuery.data, librarySearchQuery, filterStatus, filterType]);
 
   const getStatusColor = (status: MediaTracking['status'] | undefined) => {
     switch (status) {
@@ -354,8 +551,27 @@ function App() {
     }
   };
 
+  const describeNextUp = (item: NextUpItem) => {
+    const status = item.tracking?.status;
+    if (status === 'watching') {
+      return 'Continue where you left off';
+    }
+    if (status === 'to_watch') {
+      return 'Recommended based on your recent favorites';
+    }
+    if (status === 'completed') {
+      return 'Revisit a recent favorite';
+    }
+    return 'Ready when you are';
+  };
+
   const formatStatus = (status: MediaTracking['status'] | undefined) =>
     status?.replace('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) ?? 'Unknown';
+
+  const handleQuickAddSelect = (option: QuickAddOption) => {
+    if (quickAddMutation.isPending) return;
+    quickAddMutation.mutate(option);
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -435,12 +651,21 @@ function App() {
         <button
           className={activeTab === 'library' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('library')}
+          aria-current={activeTab === 'library' ? 'page' : undefined}
         >
           📚 Library
         </button>
         <button
+          className={activeTab === 'search' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('search')}
+          aria-current={activeTab === 'search' ? 'page' : undefined}
+        >
+          🔎 Search
+        </button>
+        <button
           className={activeTab === 'stats' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('stats')}
+          aria-current={activeTab === 'stats' ? 'page' : undefined}
         >
           📊 Stats
         </button>
@@ -448,46 +673,94 @@ function App() {
 
       {activeTab === 'library' && (
         <main className="main">
+          <section className="quick-add-section" aria-labelledby={quickAddHeadingId}>
+            <div className="quick-add-card">
+              <div className="quick-add-header">
+                <h2 id={quickAddHeadingId}>⚡ Quick Add</h2>
+                <p>Search Devin&apos;s catalog and drop items straight into your list.</p>
+              </div>
+              <div className="quick-add-fields">
+                <div className="quick-add-field">
+                  <label htmlFor={quickAddTypeId}>Result type</label>
+                  <select
+                    id={quickAddTypeId}
+                    value={quickAddType}
+                    onChange={(e) => setQuickAddType(e.target.value as ImportSearchCategory)}
+                    disabled={quickAddMutation.isPending}
+                  >
+                    <option value="movie">🎬 Movies</option>
+                    <option value="tv">📺 TV Shows</option>
+                    <option value="book">📚 Books</option>
+                  </select>
+                </div>
+                <div className="quick-add-field quick-add-search">
+                  <label htmlFor={quickAddInputId}>Search titles</label>
+                  <input
+                    id={quickAddInputId}
+                    type="text"
+                    placeholder="Start typing a title..."
+                    value={quickAddQuery}
+                    onChange={(e) => setQuickAddQuery(e.target.value)}
+                    aria-describedby={quickAddHelperId}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <p id={quickAddHelperId} className="quick-add-helper">
+                Suggestions update as you type. Choose a result to import it instantly.
+              </p>
+              <div className="quick-add-results-wrapper" aria-live="polite">
+                {quickAddMutation.isPending && (
+                  <p className="quick-add-status" role="status">
+                    Adding to your library…
+                  </p>
+                )}
+                {quickAddLoading ? (
+                  <p className="quick-add-status">Looking up suggestions…</p>
+                ) : quickAddOptions.length > 0 ? (
+                  <ul className="quick-add-results" role="listbox" aria-label="Quick add suggestions">
+                    {quickAddOptions.map((option) => (
+                      <li key={`${option.external_id}-${option.sourceCategory}`}>
+                        <button
+                          type="button"
+                          className="quick-add-option"
+                          onClick={() => handleQuickAddSelect(option)}
+                          disabled={quickAddMutation.isPending}
+                          aria-label={`Add ${option.title}${option.year ? ` (${option.year})` : ''} to your library`}
+                        >
+                          <span className="quick-add-option-title">{option.title}</span>
+                          <span className="quick-add-option-meta">
+                            {option.year ? `${option.year} • ` : ''}
+                            {option.sourceCategory === 'tv'
+                              ? 'TV show'
+                              : option.sourceCategory === 'movie'
+                              ? 'Movie'
+                              : 'Book'}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : quickAddQuery.trim().length >= QUICK_ADD_MIN_QUERY_LENGTH ? (
+                  <p className="quick-add-status">No matches yet—try a different spelling.</p>
+                ) : (
+                  <p className="quick-add-status">
+                    Type at least {QUICK_ADD_MIN_QUERY_LENGTH} letters to see suggestions.
+                  </p>
+                )}
+                {quickAddError && (
+                  <p className="quick-add-error" role="alert">
+                    {quickAddError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
           <div className="add-section">
             <button className="add-button" onClick={() => setShowAddForm(!showAddForm)}>
               {showAddForm ? '✕ Cancel' : '+ Add Media'}
             </button>
-          </div>
-
-          <div className="search-section">
-            <input
-              type="text"
-              className="search-input"
-              placeholder="🔍 Search by title, author, or director..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-
-            <div className="filter-row">
-              <select
-                className="filter-select"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
-              >
-                <option value="all">All Status</option>
-                <option value="to_watch">To Watch/Read</option>
-                <option value="watching">Currently Watching/Reading</option>
-                <option value="completed">Completed</option>
-                <option value="on_hold">On Hold</option>
-                <option value="dropped">Dropped</option>
-              </select>
-
-              <select
-                className="filter-select"
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value as TypeFilter)}
-              >
-                <option value="all">All Types</option>
-                <option value="movie">🎬 Movies</option>
-                <option value="tv_show">📺 TV Shows</option>
-                <option value="book">📚 Books</option>
-              </select>
-            </div>
           </div>
 
           {showAddForm && (
@@ -546,6 +819,96 @@ function App() {
               </button>
             </form>
           )}
+
+          <section className="next-up-section" aria-labelledby={nextUpHeadingId}>
+            <div className="next-up-card">
+              <div className="next-up-header">
+                <h2 id={nextUpHeadingId}>🎯 Next up</h2>
+                {nextUpQuery.isFetching && (
+                  <span className="next-up-refresh" role="status">
+                    Refreshing…
+                  </span>
+                )}
+              </div>
+              {nextUpQuery.error ? (
+                <p className="next-up-status">We couldn&apos;t load recommendations right now.</p>
+              ) : nextUpQuery.isLoading ? (
+                <p className="next-up-status">Finding your next picks…</p>
+              ) : nextUpQuery.data && nextUpQuery.data.length > 0 ? (
+                <ol className="next-up-list">
+                  {nextUpQuery.data.map((item) => (
+                    <li key={item.id} className="next-up-item">
+                      <div className="next-up-item-row">
+                        <span className="next-up-icon" aria-hidden="true">
+                          {getMediaIcon(item.mediaType)}
+                        </span>
+                        <div className="next-up-text">
+                          <span className="next-up-title">{item.title}</span>
+                          <span className="next-up-status-label">{formatStatus(item.tracking?.status)}</span>
+                        </div>
+                      </div>
+                      <p className="next-up-hint">{describeNextUp(item)}</p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <div className="next-up-empty">
+                  <p>You&apos;re all caught up! Update progress to see fresh picks.</p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="search-section" aria-labelledby={librarySearchHeadingId}>
+            <div className="search-section-header">
+              <h2 id={librarySearchHeadingId}>Filter your library</h2>
+            </div>
+            <label className="field-label" htmlFor={librarySearchInputId}>
+              Search by title, author, or director
+            </label>
+            <input
+              id={librarySearchInputId}
+              type="text"
+              className="search-input"
+              placeholder="🔍 Search by title, author, or director..."
+              value={librarySearchQuery}
+              onChange={(e) => setLibrarySearchQuery(e.target.value)}
+            />
+
+            <div className="filter-row">
+              <div className="filter-field">
+                <label htmlFor={statusFilterId}>Status filter</label>
+                <select
+                  id={statusFilterId}
+                  className="filter-select"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
+                >
+                  <option value="all">All status</option>
+                  <option value="to_watch">To watch/read</option>
+                  <option value="watching">Currently watching/reading</option>
+                  <option value="completed">Completed</option>
+                  <option value="on_hold">On hold</option>
+                  <option value="dropped">Dropped</option>
+                </select>
+              </div>
+
+              <div className="filter-field">
+                <label htmlFor={typeFilterId}>Type filter</label>
+                <select
+                  id={typeFilterId}
+                  className="filter-select"
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value as TypeFilter)}
+                >
+                  <option value="all">All types</option>
+                  <option value="movie">🎬 Movies</option>
+                  <option value="tv_show">📺 TV Shows</option>
+                  <option value="book">📚 Books</option>
+                </select>
+              </div>
+            </div>
+          </section>
 
           <div className="media-list">
             {filteredMediaItems.length === 0 ? (
@@ -610,6 +973,72 @@ function App() {
               ))
             )}
           </div>
+        </main>
+      )}
+
+      {activeTab === 'search' && (
+        <main className="main">
+          <section className="search-screen" aria-labelledby={searchScreenHeadingId}>
+            <h2 id={searchScreenHeadingId}>Search your library</h2>
+            <p id={searchScreenHelperId} className="search-screen-helper">
+              Results are ranked so the best matches appear first—even if your spelling is a little off.
+            </p>
+            <label className="field-label" htmlFor={globalSearchInputId}>
+              Search query
+            </label>
+            <input
+              id={globalSearchInputId}
+              type="search"
+              className="search-input"
+              placeholder={'Try "Stranger Things" or "Dune"'}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-describedby={searchScreenHelperId}
+              autoComplete="off"
+            />
+
+            <div className="search-screen-status" aria-live="polite">
+              {trimmedSearchTerm.length === 0 ? (
+                <p>Start typing to search across your saved items.</p>
+              ) : searchResultsQuery.isLoading ? (
+                <p>Searching your library…</p>
+              ) : searchResultsQuery.error ? (
+                <p>We couldn&apos;t run that search. Please try again.</p>
+              ) : searchResultsQuery.data && searchResultsQuery.data.length > 0 ? (
+                <>
+                  <p className="search-result-count">
+                    Showing {searchResultsQuery.data.length}{' '}
+                    {searchResultsQuery.data.length === 1 ? 'result' : 'results'} for “{trimmedSearchTerm}”.
+                  </p>
+                  {searchResultsQuery.isFetching && !searchResultsQuery.isLoading && (
+                    <p className="search-result-refresh" role="status">
+                      Refreshing results…
+                    </p>
+                  )}
+                  <ul className="search-results">
+                    {searchResultsQuery.data.map((item) => (
+                      <li key={item.id} className="search-result-item">
+                        <div className="search-result-row">
+                          <span className="search-result-icon" aria-hidden="true">
+                            {getMediaIcon(item.mediaType)}
+                          </span>
+                          <div className="search-result-text">
+                            <span className="search-result-title">{item.title}</span>
+                            <span className="search-result-meta">{formatStatus(item.tracking?.status)}</span>
+                          </div>
+                        </div>
+                        {item.tracking?.notes && <p className="search-result-notes">{item.tracking.notes}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p>
+                  No saved items match “{trimmedSearchTerm}”. Try another spelling or add it from Quick Add.
+                </p>
+              )}
+            </div>
+          </section>
         </main>
       )}
 
