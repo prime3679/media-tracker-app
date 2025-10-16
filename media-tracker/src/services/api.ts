@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import {
   createMediaSchema as serverCreateMediaSchema,
-  updateTrackingSchema as serverUpdateTrackingSchema,
+  updateTrackingWithEpisodeSchema as serverUpdateTrackingSchema,
   mediaTypeSchema,
   statusSchema,
-  statsSchema as serverStatsSchema,
+  stats2Schema as serverStatsSchema,
 } from '../../shared/schemas/index.js';
 
 const API_BASE = '/api/v1';
@@ -19,6 +19,7 @@ const trackingResponseSchema = z.object({
   rating: z.union([z.string(), z.number()]).nullable().optional(),
   progress: z.number(),
   notes: z.string().nullable(),
+  episodeId: z.number().nullable().optional(),
   completedDate: z.string().nullable(),
   createdAt: isoDateSchema,
   updatedAt: isoDateSchema,
@@ -36,6 +37,7 @@ const parseRating = (value: unknown): number | null => {
 const trackingSchema = trackingResponseSchema.transform((tracking) => ({
   ...tracking,
   rating: parseRating(tracking.rating),
+  episodeId: tracking.episodeId ?? null,
 }));
 
 const mediaItemResponseSchema = z.object({
@@ -62,6 +64,73 @@ const mediaItemSchema = mediaItemResponseSchema.transform((item) => ({
 const mediaListSchema = z.array(mediaItemSchema);
 
 const statsSchema = serverStatsSchema;
+
+const seasonSchema = z.object({
+  id: z.number(),
+  mediaItemId: z.number(),
+  seasonNumber: z.number(),
+  title: z.string().nullable().optional(),
+  episodeCount: z.number().nullable().optional(),
+  airDate: z.string().nullable().optional(),
+  createdAt: isoDateSchema,
+});
+
+const seasonListSchema = z.array(seasonSchema);
+
+const episodeSchema = z.object({
+  id: z.number(),
+  seasonId: z.number(),
+  episodeNumber: z.number(),
+  title: z.string(),
+  description: z.string().nullable(),
+  airDate: z.string().nullable().optional(),
+  runtime: z.number().nullable().optional(),
+  createdAt: isoDateSchema,
+});
+
+const episodeListSchema = z.array(episodeSchema);
+
+const parseGenreGravity = (value: unknown): { genre: string; count: number }[] => {
+  if (Array.isArray(value)) {
+    return value as { genre: string; count: number }[];
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed as { genre: string; count: number }[];
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const weeklySnapshotSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  weekStart: isoDateSchema,
+  totalItems: z.number(),
+  completed: z.number(),
+  watching: z.number(),
+  toWatch: z.number(),
+  completionsThisWeek: z.number(),
+  completionVelocity: z
+    .union([z.string(), z.number()])
+    .transform((value) => {
+      const numeric = typeof value === 'number' ? value : Number.parseFloat(value);
+      return Number.isFinite(numeric) ? numeric : 0;
+    }),
+  streakDays: z.number(),
+  genreGravity: z
+    .unknown()
+    .transform((value) => parseGenreGravity(value)),
+});
+
+const weeklySnapshotListSchema = z.array(weeklySnapshotSchema);
 
 const importSearchResultSchema = z.object({
   title: z.string(),
@@ -102,6 +171,7 @@ const updateTrackingInputSchema = serverUpdateTrackingSchema.pick({
   rating: true,
   notes: true,
   progress: true,
+  episodeId: true,
 });
 
 export type MediaTracking = z.infer<typeof trackingSchema>;
@@ -114,6 +184,9 @@ export type ImportSearchResult = z.infer<typeof importSearchResultSchema>;
 export type ImportApplyInput = z.infer<typeof importApplyInputSchema>;
 export type SearchResultItem = z.infer<typeof mediaItemSchema>;
 export type NextUpItem = z.infer<typeof mediaItemSchema>;
+export type Season = z.infer<typeof seasonSchema>;
+export type Episode = z.infer<typeof episodeSchema>;
+export type WeeklySnapshot = z.infer<typeof weeklySnapshotSchema>;
 
 interface ApiRequestOptions<TBody> {
   endpoint: string;
@@ -215,9 +288,15 @@ export const mediaApi = {
 
 export type MediaQueryKey = ['media'];
 export type StatsQueryKey = ['stats'];
+export type SeasonQueryKey = ['seasons', number];
+export type EpisodeQueryKey = ['episodes', number];
+export type SnapshotsQueryKey = ['snapshots', number];
 
 export const mediaQueryKey: MediaQueryKey = ['media'];
 export const statsQueryKey: StatsQueryKey = ['stats'];
+export const buildSeasonQueryKey = (mediaId: number): SeasonQueryKey => ['seasons', mediaId];
+export const buildEpisodeQueryKey = (seasonId: number): EpisodeQueryKey => ['episodes', seasonId];
+export const buildSnapshotsQueryKey = (limit: number): SnapshotsQueryKey => ['snapshots', limit];
 
 export type NextQueryKey = ['next'];
 export type SearchQueryKey = ['search', string];
@@ -264,3 +343,36 @@ export const nextApi = {
 
 export const nextQueryKey: NextQueryKey = ['next'];
 export const buildSearchQueryKey = (query: string): SearchQueryKey => ['search', query];
+
+export const seasonsApi = {
+  list: (mediaId: number, signal?: AbortSignal) =>
+    apiCall(
+      {
+        endpoint: `/media/${mediaId}/seasons`,
+        signal,
+      },
+      seasonListSchema,
+    ),
+};
+
+export const episodesApi = {
+  list: (seasonId: number, signal?: AbortSignal) =>
+    apiCall(
+      {
+        endpoint: `/seasons/${seasonId}/episodes`,
+        signal,
+      },
+      episodeListSchema,
+    ),
+};
+
+export const snapshotsApi = {
+  list: (limit: number, signal?: AbortSignal) =>
+    apiCall(
+      {
+        endpoint: buildSearchEndpoint('/snapshots', { limit: String(limit) }),
+        signal,
+      },
+      weeklySnapshotListSchema,
+    ),
+};

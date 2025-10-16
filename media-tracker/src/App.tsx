@@ -10,6 +10,7 @@ import {
   nextQueryKey,
   searchApi,
   buildSearchQueryKey,
+  buildSnapshotsQueryKey,
   type CreateMediaInput,
   type MediaItem,
   type MediaList,
@@ -20,8 +21,18 @@ import {
   type ImportSearchResult,
   type NextUpItem,
   type SearchResultItem,
+  type Episode,
+  type WeeklySnapshot,
+  snapshotsApi,
 } from './services/api';
 import { syncStore } from './lib/syncStore';
+import TvEpisodeControls from './components/TvEpisodeControls';
+import {
+  adjustStatsForCreate,
+  adjustStatsForStatusChange,
+  buildSparklinePath,
+  formatRelativeTime,
+} from './utils/stats';
 
 type Tab = 'library' | 'stats' | 'search';
 type StatusFilter = 'all' | MediaTracking['status'];
@@ -68,20 +79,6 @@ const INITIAL_FORM_STATE: FormState = {
   notes: '',
 };
 
-const STATUS_TO_STATS_KEY: Record<MediaTracking['status'], keyof MediaStats> = {
-  completed: 'completed',
-  watching: 'watching',
-  to_watch: 'toWatch',
-  on_hold: 'onHold',
-  dropped: 'dropped',
-};
-
-const TYPE_TO_STATS_KEY: Record<MediaItem['mediaType'], keyof MediaStats> = {
-  movie: 'movies',
-  tv_show: 'tvShows',
-  book: 'books',
-};
-
 const nowIsoString = () => new Date().toISOString();
 
 const mapCategoryToMediaType = (category: ImportSearchCategory): MediaItem['mediaType'] =>
@@ -92,6 +89,9 @@ const mapCategoryToApplyType = (category: ImportSearchCategory): ImportApplyInpu
 
 const QUICK_ADD_MIN_QUERY_LENGTH = 2;
 const QUICK_ADD_DEBOUNCE_MS = 300;
+
+const SPARKLINE_WIDTH = 120;
+const SPARKLINE_HEIGHT = 36;
 
 const buildCreateInput = (form: FormState): CreateMediaInput => ({
   title: form.title.trim(),
@@ -124,42 +124,12 @@ const createOptimisticMediaItem = (
     rating: input.rating ?? null,
     progress: input.progress ?? 0,
     notes: (input.notes as string | undefined) ?? null,
+    episodeId: null,
     completedDate: input.status === 'completed' ? nowIsoString() : null,
     createdAt: nowIsoString(),
     updatedAt: nowIsoString(),
   },
 });
-
-const adjustStatsForCreate = (stats: MediaStats, item: MediaItem): MediaStats => {
-  const typeKey = TYPE_TO_STATS_KEY[item.mediaType];
-  const statusKey = item.tracking ? STATUS_TO_STATS_KEY[item.tracking.status] : 'toWatch';
-
-  return {
-    ...stats,
-    totalItems: stats.totalItems + 1,
-    [typeKey]: stats[typeKey] + 1,
-    [statusKey]: stats[statusKey] + 1,
-  } satisfies MediaStats;
-};
-
-const adjustStatsForStatusChange = (
-  stats: MediaStats,
-  previousStatus: MediaTracking['status'],
-  nextStatus: MediaTracking['status'],
-) => {
-  if (previousStatus === nextStatus) {
-    return stats;
-  }
-
-  const prevKey = STATUS_TO_STATS_KEY[previousStatus];
-  const nextKey = STATUS_TO_STATS_KEY[nextStatus];
-
-  return {
-    ...stats,
-    [prevKey]: Math.max(0, stats[prevKey] - 1),
-    [nextKey]: stats[nextKey] + 1,
-  } satisfies MediaStats;
-};
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('library');
@@ -210,6 +180,12 @@ function App() {
   const statsQuery = useQuery({
     queryKey: statsQueryKey,
     queryFn: () => mediaApi.stats(),
+  });
+
+  const snapshotsQuery = useQuery<WeeklySnapshot[]>({
+    queryKey: buildSnapshotsQueryKey(6),
+    queryFn: () => snapshotsApi.list(6),
+    enabled: activeTab === 'stats',
   });
 
   const nextUpQuery = useQuery<NextUpItem[]>({
@@ -430,6 +406,7 @@ function App() {
             rating: null,
             progress: 0,
             notes: null,
+            episodeId: null,
             completedDate: null,
             createdAt: nowIsoString(),
             updatedAt: nowIsoString(),
@@ -442,6 +419,10 @@ function App() {
             rating: data.rating ?? tracking.rating ?? null,
             notes: (data.notes as string | null | undefined) ?? tracking.notes ?? null,
             progress: data.progress ?? tracking.progress ?? 0,
+            episodeId:
+              data.episodeId !== undefined
+                ? data.episodeId
+                : tracking.episodeId ?? null,
             updatedAt: nowIsoString(),
             completedDate: nextStatus === 'completed' ? tracking.completedDate ?? nowIsoString() : null,
           };
@@ -521,6 +502,52 @@ function App() {
     });
   }, [mediaQuery.data, librarySearchQuery, filterStatus, filterType]);
 
+  const weeklyActivity = useMemo(() => {
+    if (!mediaQuery.data) return [] as MediaList;
+
+    const threshold = new Date();
+    threshold.setDate(threshold.getDate() - 7);
+    threshold.setHours(0, 0, 0, 0);
+    const thresholdTime = threshold.getTime();
+
+    return mediaQuery.data
+      .filter((item) => {
+        const updatedAtIso = item.tracking?.updatedAt ?? item.updatedAt;
+        const updatedTime = updatedAtIso ? new Date(updatedAtIso).getTime() : Number.NaN;
+        return Number.isFinite(updatedTime) && updatedTime >= thresholdTime;
+      })
+      .sort((a, b) => {
+        const aTime = new Date(a.tracking?.updatedAt ?? a.updatedAt).getTime();
+        const bTime = new Date(b.tracking?.updatedAt ?? b.updatedAt).getTime();
+        if (!Number.isFinite(aTime) && !Number.isFinite(bTime)) return 0;
+        if (!Number.isFinite(aTime)) return 1;
+        if (!Number.isFinite(bTime)) return -1;
+        return bTime - aTime;
+      })
+      .slice(0, 5);
+  }, [mediaQuery.data]);
+
+  const velocityValues = useMemo(() => {
+    const snapshots = snapshotsQuery.data
+      ? [...snapshotsQuery.data].sort(
+          (a, b) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime(),
+        )
+      : [];
+
+    const values = snapshots.map((snapshot) => snapshot.completionsThisWeek);
+
+    if (statsQuery.data) {
+      values.push(statsQuery.data.completionVelocity);
+    }
+
+    return values;
+  }, [snapshotsQuery.data, statsQuery.data]);
+
+  const velocityPath = useMemo(
+    () => buildSparklinePath(velocityValues, SPARKLINE_WIDTH, SPARKLINE_HEIGHT),
+    [velocityValues],
+  );
+
   const getStatusColor = (status: MediaTracking['status'] | undefined) => {
     switch (status) {
       case 'completed':
@@ -587,6 +614,7 @@ function App() {
         rating: item.tracking?.rating ?? null,
         notes: item.tracking?.notes ?? undefined,
         progress: item.tracking?.progress ?? 0,
+        episodeId: item.tracking?.episodeId ?? undefined,
       },
     });
   };
@@ -600,8 +628,30 @@ function App() {
         rating,
         notes: item.tracking?.notes ?? undefined,
         progress: item.tracking?.progress ?? 0,
+        episodeId: item.tracking?.episodeId ?? undefined,
       },
     });
+  };
+
+  const handleEpisodeProgressUpdate = (item: MediaItem, episode: Episode | null) => {
+    const tracking = item.tracking;
+    const currentStatus = tracking?.status ?? 'to_watch';
+    const nextStatus = currentStatus === 'to_watch' ? 'watching' : currentStatus;
+
+    updateTrackingMutation.mutate({
+      mediaId: item.id,
+      data: {
+        status: episode ? nextStatus : currentStatus,
+        rating: tracking?.rating ?? null,
+        notes: tracking?.notes ?? undefined,
+        progress: episode ? episode.episodeNumber : tracking?.progress ?? 0,
+        episodeId: episode?.id ?? undefined,
+      },
+    });
+  };
+
+  const handleMarkNextEpisode = (item: MediaItem, episode: Episode) => {
+    handleEpisodeProgressUpdate(item, episode);
   };
 
   const isLoading = mediaQuery.isLoading && !mediaQuery.data;
@@ -942,6 +992,15 @@ function App() {
 
                   {item.tracking?.notes && <p className="notes">{item.tracking.notes}</p>}
 
+                  {item.mediaType === 'tv_show' && (
+                    <TvEpisodeControls
+                      item={item}
+                      isUpdating={updateTrackingMutation.isPending}
+                      onEpisodeSelect={(episode) => handleEpisodeProgressUpdate(item, episode)}
+                      onMarkNextEpisode={(episode) => handleMarkNextEpisode(item, episode)}
+                    />
+                  )}
+
                   <div className="item-actions">
                     <select
                       value={item.tracking?.status ?? 'to_watch'}
@@ -1047,44 +1106,91 @@ function App() {
           <div className="stats">
             <h2>📊 Your Stats</h2>
             {statsQuery.data ? (
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <h3>{statsQuery.data.totalItems}</h3>
-                  <p>Total Items</p>
+              <>
+                <div className="stats-cards">
+                  <section className="stat-card total-card" aria-label="Total items and breakdown">
+                    <div className="stat-card-header">
+                      <h3>Total tracked</h3>
+                      <p className="stat-value">{statsQuery.data.totalItems}</p>
+                    </div>
+                    <div className="stat-breakdown">
+                      <dl>
+                        <dt>Completed</dt>
+                        <dd>{statsQuery.data.completed}</dd>
+                        <dt>Watching</dt>
+                        <dd>{statsQuery.data.watching}</dd>
+                        <dt>To watch</dt>
+                        <dd>{statsQuery.data.toWatch}</dd>
+                      </dl>
+                      <dl>
+                        <dt>On hold</dt>
+                        <dd>{statsQuery.data.onHold}</dd>
+                        <dt>Dropped</dt>
+                        <dd>{statsQuery.data.dropped}</dd>
+                        <dt>Movies / TV / Books</dt>
+                        <dd>
+                          {statsQuery.data.movies} / {statsQuery.data.tvShows} / {statsQuery.data.books}
+                        </dd>
+                      </dl>
+                    </div>
+                  </section>
+
+                  <section className="stat-card streak-card" aria-label="Streak">
+                    <h3>🔥 Streak</h3>
+                    <p className="stat-value">{statsQuery.data.streakDays}</p>
+                    <p className="stat-caption">days in a row</p>
+                  </section>
+
+                  <section className="stat-card velocity-card" aria-label="Completion velocity">
+                    <h3>⚡ Velocity</h3>
+                    <p className="stat-value">{statsQuery.data.completionVelocity}</p>
+                    <p className="stat-caption">completions this week</p>
+                    {velocityValues.length > 0 ? (
+                      <svg
+                        className="velocity-sparkline"
+                        viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
+                        role="img"
+                        aria-label="Completion velocity over recent weeks"
+                      >
+                        <polyline
+                          points={`0 ${SPARKLINE_HEIGHT} ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
+                          fill="none"
+                          stroke="none"
+                        />
+                        <path d={velocityPath} fill="none" stroke="currentColor" strokeWidth="2" />
+                      </svg>
+                    ) : snapshotsQuery.isLoading ? (
+                      <p className="stat-caption">Loading history…</p>
+                    ) : snapshotsQuery.error ? (
+                      <p className="stat-caption">Unable to load history.</p>
+                    ) : (
+                      <p className="stat-caption">No history yet</p>
+                    )}
+                  </section>
                 </div>
-                <div className="stat-card">
-                  <h3>{statsQuery.data.completed}</h3>
-                  <p>Completed</p>
-                </div>
-                <div className="stat-card">
-                  <h3>{statsQuery.data.watching}</h3>
-                  <p>Currently Watching/Reading</p>
-                </div>
-                <div className="stat-card">
-                  <h3>{statsQuery.data.toWatch}</h3>
-                  <p>To Watch</p>
-                </div>
-                <div className="stat-card">
-                  <h3>{statsQuery.data.onHold}</h3>
-                  <p>On Hold</p>
-                </div>
-                <div className="stat-card">
-                  <h3>{statsQuery.data.dropped}</h3>
-                  <p>Dropped</p>
-                </div>
-                <div className="stat-card">
-                  <h3>{statsQuery.data.movies}</h3>
-                  <p>Movies</p>
-                </div>
-                <div className="stat-card">
-                  <h3>{statsQuery.data.tvShows}</h3>
-                  <p>TV Shows</p>
-                </div>
-                <div className="stat-card">
-                  <h3>{statsQuery.data.books}</h3>
-                  <p>Books</p>
-                </div>
-              </div>
+
+                <section className="stats-movement" aria-live="polite">
+                  <h3>What moved this week</h3>
+                  {weeklyActivity.length > 0 ? (
+                    <ul className="movement-list">
+                      {weeklyActivity.map((item) => {
+                        const updatedAt = item.tracking?.updatedAt ?? item.updatedAt;
+                        return (
+                          <li key={item.id} className="movement-item">
+                            <div className="movement-primary">
+                              <span className="movement-title">{item.title}</span>
+                              <span className="movement-status">{formatStatus(item.tracking?.status)}</span>
+                            </div>
+                            <span className="movement-meta">{formatRelativeTime(updatedAt)}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="stats-empty">No activity yet. Update a status to see recent moves.</p>
+                  )}
+                </section>
+              </>
             ) : (
               <div className="loading">
                 <p>Loading your statistics...</p>
