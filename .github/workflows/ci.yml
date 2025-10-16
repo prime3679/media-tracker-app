@@ -55,7 +55,7 @@ jobs:
       
       - name: Run unit tests
         working-directory: media-tracker
-        run: npm test -- --run --reporter=verbose
+        run: npm test -- --run --reporter=verbose src/
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -100,6 +100,10 @@ jobs:
       - name: Install dependencies
         working-directory: media-tracker
         run: npm ci
+      
+      - name: Run database migrations
+        working-directory: media-tracker
+        run: npm run db:push
       
       - name: Run integration tests
         working-directory: media-tracker
@@ -152,6 +156,10 @@ jobs:
       - name: Install Playwright browsers
         working-directory: media-tracker
         run: npx playwright install --with-deps chromium
+      
+      - name: Run database migrations
+        working-directory: media-tracker
+        run: npm run db:push
       
       - name: Run Playwright smoke tests
         working-directory: media-tracker
