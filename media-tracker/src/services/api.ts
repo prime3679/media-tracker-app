@@ -47,6 +47,8 @@ const mediaItemResponseSchema = z.object({
   author: z.string().nullable(),
   director: z.string().nullable(),
   genres: z.string().nullable(),
+  imageUrl: z.string().nullable().optional(),
+  releaseDate: z.string().nullable().optional(),
   createdAt: isoDateSchema,
   updatedAt: isoDateSchema,
   tracking: trackingResponseSchema.nullable(),
@@ -60,6 +62,27 @@ const mediaItemSchema = mediaItemResponseSchema.transform((item) => ({
 const mediaListSchema = z.array(mediaItemSchema);
 
 const statsSchema = serverStatsSchema;
+
+const importSearchResultSchema = z.object({
+  title: z.string(),
+  year: z.string().nullable().optional(),
+  poster: z.string().nullable().optional(),
+  external_id: z.string(),
+});
+
+const importApplyInputSchema = z.object({
+  title: z.string(),
+  year: z.string().nullable().optional(),
+  poster: z.string().nullable().optional(),
+  external_id: z.string(),
+  type: z.enum(['movie', 'tv_show', 'book']),
+});
+
+const importSearchResultListSchema = z.array(importSearchResultSchema);
+
+const searchResultsSchema = z.array(mediaItemSchema);
+
+const nextUpSchema = z.array(mediaItemSchema);
 
 const createMediaInputSchema = serverCreateMediaSchema.pick({
   title: true,
@@ -87,6 +110,10 @@ export type MediaList = z.infer<typeof mediaListSchema>;
 export type MediaStats = z.infer<typeof statsSchema>;
 export type CreateMediaInput = z.infer<typeof createMediaInputSchema>;
 export type UpdateTrackingInput = z.infer<typeof updateTrackingInputSchema>;
+export type ImportSearchResult = z.infer<typeof importSearchResultSchema>;
+export type ImportApplyInput = z.infer<typeof importApplyInputSchema>;
+export type SearchResultItem = z.infer<typeof mediaItemSchema>;
+export type NextUpItem = z.infer<typeof mediaItemSchema>;
 
 interface ApiRequestOptions<TBody> {
   endpoint: string;
@@ -191,3 +218,49 @@ export type StatsQueryKey = ['stats'];
 
 export const mediaQueryKey: MediaQueryKey = ['media'];
 export const statsQueryKey: StatsQueryKey = ['stats'];
+
+export type NextQueryKey = ['next'];
+export type SearchQueryKey = ['search', string];
+
+const buildSearchEndpoint = (path: string, params: Record<string, string>) => {
+  const searchParams = new URLSearchParams(params);
+  return `${path}?${searchParams.toString()}`;
+};
+
+export const importApi = {
+  search: (query: string, type: 'movie' | 'tv' | 'book', signal?: AbortSignal) =>
+    apiCall(
+      {
+        endpoint: buildSearchEndpoint('/import/search', { query, type }),
+        signal,
+      },
+      importSearchResultListSchema,
+    ),
+  apply: (input: ImportApplyInput) =>
+    apiCall(
+      {
+        endpoint: '/import/apply',
+        method: 'POST',
+        body: importApplyInputSchema.parse(input),
+      },
+      mediaItemSchema,
+    ),
+};
+
+export const searchApi = {
+  search: (query: string, signal?: AbortSignal) =>
+    apiCall(
+      {
+        endpoint: buildSearchEndpoint('/search', { q: query }),
+        signal,
+      },
+      searchResultsSchema,
+    ),
+};
+
+export const nextApi = {
+  list: (signal?: AbortSignal) => apiCall({ endpoint: '/next', signal }, nextUpSchema),
+};
+
+export const nextQueryKey: NextQueryKey = ['next'];
+export const buildSearchQueryKey = (query: string): SearchQueryKey => ['search', query];
