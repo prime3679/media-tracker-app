@@ -1,21 +1,8 @@
-import { test, expect, type Page } from '@playwright/test';
-
-async function login(page: Page) {
-  await page.goto('/');
-  
-  const loginButton = page.getByRole('button', { name: /login/i });
-  if (await loginButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await loginButton.click();
-    await page.getByPlaceholder('Email').fill('test@example.com');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: /sign in/i }).click();
-    await page.waitForURL('/', { timeout: 5000 });
-  }
-}
+import { test, expect } from '@playwright/test';
 
 test.describe('Smoke E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
-    await login(page);
+    await page.goto('/');
   });
 
   test('should add a new media item', async ({ page }) => {

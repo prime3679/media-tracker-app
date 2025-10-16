@@ -1,18 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
 
-async function login(page: Page) {
-  await page.goto('/');
-  
-  const loginButton = page.getByRole('button', { name: /login/i });
-  if (await loginButton.isVisible()) {
-    await loginButton.click();
-    await page.getByPlaceholder('Email').fill('test@example.com');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: /sign in/i }).click();
-    await page.waitForURL('/');
-  }
-}
-
 async function addMedia(page: Page, title: string, offline = false) {
   if (offline) {
     await page.context().setOffline(true);
@@ -31,7 +18,7 @@ async function addMedia(page: Page, title: string, offline = false) {
 
 test.describe('Offline Sync', () => {
   test.beforeEach(async ({ page }) => {
-    await login(page);
+    await page.goto('/');
   });
 
   test('should queue write when offline and sync when online', async ({ page, context }) => {
@@ -70,7 +57,7 @@ test.describe('Offline Sync', () => {
     const newContext = await browser.newContext();
     const newPage = await newContext.newPage();
     
-    await login(newPage);
+    await newPage.goto('/');
     
     await expect(newPage.locator('.sync-badge')).not.toBeVisible({ timeout: 15000 });
     

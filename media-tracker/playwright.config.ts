@@ -24,5 +24,9 @@ export default defineConfig({
     url: 'http://localhost:5000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
+    env: {
+      BYPASS_AUTH: process.env.BYPASS_AUTH || 'false',
+      DATABASE_URL: process.env.DATABASE_URL || '',
+    },
   },
 });
