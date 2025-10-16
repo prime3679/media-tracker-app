@@ -43,7 +43,7 @@ router.get('/search', async (req, res) => {
         return res.status(400).json({ error: 'Invalid type' });
     }
 
-    return res.json(results);
+    return res.json(results.slice(0, 5));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

@@ -23,7 +23,7 @@ test.describe('Smoke E2E Tests', () => {
     
     await page.getByRole('button', { name: /add media/i }).click();
     
-    await page.getByPlaceholder('Title').fill(testTitle);
+    await page.locator('input[name="title"], input[placeholder="Title"]').first().fill(testTitle);
     await page.locator('select[name="mediaType"]').selectOption('movie');
     await page.locator('select[name="status"]').selectOption('to_watch');
     
@@ -36,7 +36,7 @@ test.describe('Smoke E2E Tests', () => {
     const testTitle = `Status Update Movie ${Date.now()}`;
     
     await page.getByRole('button', { name: /add media/i }).click();
-    await page.getByPlaceholder('Title').fill(testTitle);
+    await page.locator('input[name="title"], input[placeholder="Title"]').first().fill(testTitle);
     await page.locator('select[name="mediaType"]').selectOption('movie');
     await page.locator('select[name="status"]').selectOption('to_watch');
     await page.getByRole('button', { name: /add to library|save|submit/i }).click();
@@ -60,7 +60,7 @@ test.describe('Smoke E2E Tests', () => {
     await context.setOffline(true);
     
     await page.getByRole('button', { name: /add media/i }).click();
-    await page.getByPlaceholder('Title').fill(testTitle);
+    await page.locator('input[name="title"], input[placeholder="Title"]').first().fill(testTitle);
     await page.locator('select[name="mediaType"]').selectOption('book');
     await page.locator('select[name="status"]').selectOption('to_watch');
     await page.getByRole('button', { name: /add to library|save|submit/i }).click();
@@ -82,7 +82,7 @@ test.describe('Smoke E2E Tests', () => {
     const testTitle = `Full Flow ${Date.now()}`;
     
     await page.getByRole('button', { name: /add media/i }).click();
-    await page.getByPlaceholder('Title').fill(testTitle);
+    await page.locator('input[name="title"], input[placeholder="Title"]').first().fill(testTitle);
     await page.locator('select[name="mediaType"]').selectOption('tv_show');
     await page.locator('select[name="status"]').selectOption('to_watch');
     
@@ -128,14 +128,14 @@ test.describe('Smoke E2E Tests', () => {
     const testTitle2 = `Different Book ${Date.now()}`;
     
     await page.getByRole('button', { name: /add media/i }).click();
-    await page.getByPlaceholder('Title').fill(testTitle1);
+    await page.locator('input[name="title"], input[placeholder="Title"]').first().fill(testTitle1);
     await page.locator('select[name="mediaType"]').selectOption('movie');
     await page.locator('select[name="status"]').selectOption('to_watch');
     await page.getByRole('button', { name: /add to library|save|submit/i }).click();
     await page.waitForTimeout(1000);
     
     await page.getByRole('button', { name: /add media/i }).click();
-    await page.getByPlaceholder('Title').fill(testTitle2);
+    await page.locator('input[name="title"], input[placeholder="Title"]').first().fill(testTitle2);
     await page.locator('select[name="mediaType"]').selectOption('book');
     await page.locator('select[name="status"]').selectOption('watching');
     await page.getByRole('button', { name: /add to library|save|submit/i }).click();
@@ -155,7 +155,7 @@ test.describe('Smoke E2E Tests', () => {
     const testTitle = `Persistence Test ${Date.now()}`;
     
     await page.getByRole('button', { name: /add media/i }).click();
-    await page.getByPlaceholder('Title').fill(testTitle);
+    await page.locator('input[name="title"], input[placeholder="Title"]').first().fill(testTitle);
     await page.locator('select[name="mediaType"]').selectOption('movie');
     await page.locator('select[name="status"]').selectOption('to_watch');
     await page.getByRole('button', { name: /add to library|save|submit/i }).click();
@@ -172,7 +172,7 @@ test.describe('Smoke E2E Tests', () => {
     
     for (let i = 1; i <= 3; i++) {
       await page.getByRole('button', { name: /add media/i }).click();
-      await page.getByPlaceholder('Title').fill(`Rapid ${timestamp}-${i}`);
+      await page.locator('input[name="title"], input[placeholder="Title"]').first().fill(`Rapid ${timestamp}-${i}`);
       await page.locator('select[name="mediaType"]').selectOption('movie');
       await page.locator('select[name="status"]').selectOption('to_watch');
       await page.getByRole('button', { name: /add to library|save|submit/i }).click();

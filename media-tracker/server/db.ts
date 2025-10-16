@@ -6,6 +6,9 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 import * as schema from "../shared/schema.js";
+import pg from 'pg';
+
+pg.types.setTypeParser(1700, (val) => val ? parseFloat(val) : null);
 
 if (!process.env.DATABASE_URL) {
   throw new Error(

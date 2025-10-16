@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { storage } from '../storage.js';
 import { db } from '../db.js';
 import { mediaItems, mediaTracking } from '../../shared/schema.js';
-import { createMediaSchema, updateTrackingSchema, createSeasonSchema, createEpisodeSchema } from '../../shared/schemas/index.js';
+import { createMediaSchema, updateTrackingWithEpisodeSchema, createSeasonSchema, createEpisodeSchema } from '../../shared/schemas/index.js';
 import { writeRateLimiter } from '../middleware/security.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { idempotencyMiddleware } from '../middleware/idempotency.js';
@@ -93,7 +93,7 @@ router.put('/media/:id/tracking', idempotencyMiddleware, writeRateLimiter, async
   try {
     const userId = req.user!.userId;
     const mediaItemId = parseInt(req.params.id);
-    const validatedData = updateTrackingSchema.parse(req.body);
+    const validatedData = updateTrackingWithEpisodeSchema.parse(req.body);
     
     let tracking = await storage.getMediaTracking(userId, mediaItemId);
     
@@ -105,6 +105,7 @@ router.put('/media/:id/tracking', idempotencyMiddleware, writeRateLimiter, async
       }
       if (validatedData.notes !== undefined) updates.notes = validatedData.notes || null;
       if (validatedData.progress !== undefined) updates.progress = validatedData.progress;
+      if (validatedData.episodeId !== undefined) updates.episodeId = validatedData.episodeId;
       
       if (validatedData.status !== undefined) {
         if (validatedData.status === 'completed' && tracking.status !== 'completed') {
@@ -126,6 +127,7 @@ router.put('/media/:id/tracking', idempotencyMiddleware, writeRateLimiter, async
         rating: ratingValue === null || ratingValue === undefined ? null : ratingValue.toString(),
         notes: validatedData.notes || null,
         progress: validatedData.progress || 0,
+        episodeId: validatedData.episodeId || null,
         completedDate: validatedData.status === 'completed' ? new Date() : null
       });
     }
