@@ -25,7 +25,6 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
     env: {
-      NODE_ENV: process.env.NODE_ENV || 'development',
       BYPASS_AUTH: process.env.BYPASS_AUTH || 'false',
       DATABASE_URL: process.env.DATABASE_URL || '',
     },

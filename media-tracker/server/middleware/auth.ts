@@ -10,7 +10,7 @@ declare global {
 }
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
-  if (process.env.NODE_ENV === 'test' || process.env.BYPASS_AUTH === 'true') {
+  if (process.env.BYPASS_AUTH === 'true') {
     req.user = { userId: 1, email: 'test@example.com' };
     next();
     return;
