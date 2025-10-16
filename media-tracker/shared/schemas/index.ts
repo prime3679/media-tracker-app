@@ -78,3 +78,46 @@ export const healthSchema = z.object({
   status: z.string(),
   timestamp: z.string()
 }).openapi('Health');
+
+export const createSeasonSchema = z.object({
+  mediaItemId: z.coerce.number().min(1).openapi({ example: 1 }),
+  seasonNumber: z.coerce.number().min(1).openapi({ example: 1 }),
+  title: z.string().max(500).optional().openapi({ example: 'Season 1' }),
+  episodeCount: z.coerce.number().min(0).optional().openapi({ example: 10 }),
+  airDate: z.string().max(100).optional().openapi({ example: '2024-01-01' })
+}).openapi('CreateSeason');
+
+export const createEpisodeSchema = z.object({
+  seasonId: z.coerce.number().min(1).openapi({ example: 1 }),
+  episodeNumber: z.coerce.number().min(1).openapi({ example: 1 }),
+  title: z.string().min(1).max(500).openapi({ example: 'Pilot' }),
+  description: z.string().max(2000).optional().openapi({ example: 'The first episode...' }),
+  airDate: z.string().max(100).optional().openapi({ example: '2024-01-01' }),
+  runtime: z.coerce.number().min(0).optional().openapi({ example: 42 })
+}).openapi('CreateEpisode');
+
+export const updateTrackingWithEpisodeSchema = z.object({
+  status: statusSchema.optional(),
+  rating: ratingSchema,
+  notes: z.string().max(1000).optional(),
+  progress: z.coerce.number().min(0).optional(),
+  episodeId: z.coerce.number().min(1).optional().openapi({ example: 5 })
+}).openapi('UpdateTrackingWithEpisode');
+
+export const stats2Schema = z.object({
+  totalItems: z.number(),
+  completed: z.number(),
+  watching: z.number(),
+  toWatch: z.number(),
+  onHold: z.number(),
+  dropped: z.number(),
+  movies: z.number(),
+  tvShows: z.number(),
+  books: z.number(),
+  completionVelocity: z.number(),
+  streakDays: z.number(),
+  genreGravity: z.array(z.object({
+    genre: z.string(),
+    count: z.number()
+  }))
+}).openapi('Stats2');
