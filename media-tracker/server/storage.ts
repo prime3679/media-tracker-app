@@ -1,6 +1,6 @@
-import { mediaItems, mediaTracking, users, refreshTokens, type User, type InsertUser, type MediaItem, type InsertMediaItem, type MediaTracking, type InsertMediaTracking, type RefreshToken, type InsertRefreshToken } from "../shared/schema.js";
+import { mediaItems, mediaTracking, users, refreshTokens, seasons, episodes, weeklyStatsSnapshots, type User, type InsertUser, type MediaItem, type InsertMediaItem, type MediaTracking, type InsertMediaTracking, type RefreshToken, type InsertRefreshToken, type Season, type InsertSeason, type Episode, type InsertEpisode, type WeeklyStatsSnapshot, type InsertWeeklyStatsSnapshot } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq, and, lt } from "drizzle-orm";
+import { eq, and, lt, desc } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -19,6 +19,18 @@ export interface IStorage {
   getUserMediaTracking(userId: number): Promise<MediaTracking[]>;
   createMediaTracking(insertMediaTracking: InsertMediaTracking): Promise<MediaTracking>;
   updateMediaTracking(id: number, updates: Partial<MediaTracking>): Promise<MediaTracking>;
+  
+  getSeason(id: number): Promise<Season | undefined>;
+  getMediaItemSeasons(mediaItemId: number): Promise<Season[]>;
+  createSeason(insertSeason: InsertSeason): Promise<Season>;
+  
+  getEpisode(id: number): Promise<Episode | undefined>;
+  getSeasonEpisodes(seasonId: number): Promise<Episode[]>;
+  createEpisode(insertEpisode: InsertEpisode): Promise<Episode>;
+  
+  getLatestSnapshot(userId: number): Promise<WeeklyStatsSnapshot | undefined>;
+  getUserSnapshots(userId: number, limit?: number): Promise<WeeklyStatsSnapshot[]>;
+  createSnapshot(insertSnapshot: InsertWeeklyStatsSnapshot): Promise<WeeklyStatsSnapshot>;
   
   getRefreshToken(token: string): Promise<RefreshToken | undefined>;
   createRefreshToken(insertRefreshToken: InsertRefreshToken): Promise<RefreshToken>;
@@ -131,6 +143,67 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(refreshTokens)
       .where(lt(refreshTokens.expiresAt, new Date()));
+  }
+
+  async getSeason(id: number): Promise<Season | undefined> {
+    const [season] = await db.select().from(seasons).where(eq(seasons.id, id));
+    return season || undefined;
+  }
+
+  async getMediaItemSeasons(mediaItemId: number): Promise<Season[]> {
+    return await db.select().from(seasons).where(eq(seasons.mediaItemId, mediaItemId));
+  }
+
+  async createSeason(insertSeason: InsertSeason): Promise<Season> {
+    const [season] = await db
+      .insert(seasons)
+      .values(insertSeason)
+      .returning();
+    return season;
+  }
+
+  async getEpisode(id: number): Promise<Episode | undefined> {
+    const [episode] = await db.select().from(episodes).where(eq(episodes.id, id));
+    return episode || undefined;
+  }
+
+  async getSeasonEpisodes(seasonId: number): Promise<Episode[]> {
+    return await db.select().from(episodes).where(eq(episodes.seasonId, seasonId));
+  }
+
+  async createEpisode(insertEpisode: InsertEpisode): Promise<Episode> {
+    const [episode] = await db
+      .insert(episodes)
+      .values(insertEpisode)
+      .returning();
+    return episode;
+  }
+
+  async getLatestSnapshot(userId: number): Promise<WeeklyStatsSnapshot | undefined> {
+    const [snapshot] = await db
+      .select()
+      .from(weeklyStatsSnapshots)
+      .where(eq(weeklyStatsSnapshots.userId, userId))
+      .orderBy(desc(weeklyStatsSnapshots.weekStart))
+      .limit(1);
+    return snapshot || undefined;
+  }
+
+  async getUserSnapshots(userId: number, limit = 10): Promise<WeeklyStatsSnapshot[]> {
+    return await db
+      .select()
+      .from(weeklyStatsSnapshots)
+      .where(eq(weeklyStatsSnapshots.userId, userId))
+      .orderBy(desc(weeklyStatsSnapshots.weekStart))
+      .limit(limit);
+  }
+
+  async createSnapshot(insertSnapshot: InsertWeeklyStatsSnapshot): Promise<WeeklyStatsSnapshot> {
+    const [snapshot] = await db
+      .insert(weeklyStatsSnapshots)
+      .values(insertSnapshot)
+      .returning();
+    return snapshot;
   }
 }
 
