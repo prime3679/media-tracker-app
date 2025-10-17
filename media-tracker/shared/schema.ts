@@ -1,5 +1,5 @@
-import { pgTable, serial, text, integer, boolean, timestamp, decimal, pgEnum } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { pgTable, serial, text, integer, timestamp, decimal, pgEnum, index } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
 
 // Enums for media types and status
 export const mediaTypeEnum = pgEnum('media_type', ['movie', 'tv_show', 'book']);
@@ -10,6 +10,7 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   username: text('username').notNull().unique(),
   email: text('email').notNull().unique(),
+  password: text('password').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -33,13 +34,22 @@ export const mediaItems = pgTable('media_items', {
   totalPages: integer('total_pages'), // For books
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdUpdatedAtIdx: index('media_items_user_id_updated_at_idx').on(table.userId, table.updatedAt),
+  titleTrigramIdx: index('media_items_title_trigram_idx').using('gin', sql`${table.title} gin_trgm_ops`),
+  searchVectorIdx: index('media_items_search_vector_idx').using('gin', sql`(
+    setweight(to_tsvector('english', coalesce(${table.title}, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(${table.director}, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(${table.author}, '')), 'B')
+  )`),
+}));
 
 // User's tracking of media items
 export const mediaTracking = pgTable('media_tracking', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').notNull(),
   mediaItemId: integer('media_item_id').notNull(),
+  episodeId: integer('episode_id'),
   status: statusEnum('status').notNull().default('to_watch'),
   rating: decimal('rating', { precision: 3, scale: 1 }), // 0.0 to 10.0
   progress: integer('progress').default(0), // Episodes watched or pages read
@@ -48,18 +58,76 @@ export const mediaTracking = pgTable('media_tracking', {
   completedDate: timestamp('completed_date'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdStatusIdx: index('media_tracking_user_id_status_idx').on(table.userId, table.status),
+  userIdUpdatedAtIdx: index('media_tracking_user_id_updated_at_idx').on(table.userId, table.updatedAt),
+}));
+
+export const refreshTokens = pgTable('refresh_tokens', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  revokedAt: timestamp('revoked_at'),
+}, (table) => ({
+  userIdIdx: index('refresh_tokens_user_id_idx').on(table.userId),
+  tokenIdx: index('refresh_tokens_token_idx').on(table.token),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   mediaItems: many(mediaItems),
   mediaTracking: many(mediaTracking),
+  refreshTokens: many(refreshTokens),
 }));
 
 export const mediaItemsRelations = relations(mediaItems, ({ one, many }) => ({
   user: one(users, {
     fields: [mediaItems.userId],
     references: [users.id],
+  }),
+  tracking: many(mediaTracking),
+  seasons: many(seasons),
+}));
+
+export const seasons = pgTable('seasons', {
+  id: serial('id').primaryKey(),
+  mediaItemId: integer('media_item_id').notNull(),
+  seasonNumber: integer('season_number').notNull(),
+  title: text('title'),
+  episodeCount: integer('episode_count'),
+  airDate: text('air_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  mediaItemIdIdx: index('seasons_media_item_id_idx').on(table.mediaItemId),
+}));
+
+export const episodes = pgTable('episodes', {
+  id: serial('id').primaryKey(),
+  seasonId: integer('season_id').notNull(),
+  episodeNumber: integer('episode_number').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  airDate: text('air_date'),
+  runtime: integer('runtime'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  seasonIdIdx: index('episodes_season_id_idx').on(table.seasonId),
+}));
+
+export const seasonsRelations = relations(seasons, ({ one, many }) => ({
+  mediaItem: one(mediaItems, {
+    fields: [seasons.mediaItemId],
+    references: [mediaItems.id],
+  }),
+  episodes: many(episodes),
+}));
+
+export const episodesRelations = relations(episodes, ({ one, many }) => ({
+  season: one(seasons, {
+    fields: [episodes.seasonId],
+    references: [seasons.id],
   }),
   tracking: many(mediaTracking),
 }));
@@ -73,6 +141,66 @@ export const mediaTrackingRelations = relations(mediaTracking, ({ one }) => ({
     fields: [mediaTracking.mediaItemId],
     references: [mediaItems.id],
   }),
+  episode: one(episodes, {
+    fields: [mediaTracking.episodeId],
+    references: [episodes.id],
+  }),
+}));
+
+export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [refreshTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const idempotencyKeys = pgTable('idempotency_keys', {
+  id: serial('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  userId: integer('user_id').notNull(),
+  endpoint: text('endpoint').notNull(),
+  responseStatus: integer('response_status'),
+  responseBody: text('response_body'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+}, (table) => ({
+  keyIdx: index('idempotency_keys_key_idx').on(table.key),
+  expiresAtIdx: index('idempotency_keys_expires_at_idx').on(table.expiresAt),
+}));
+
+export const weeklyStatsSnapshots = pgTable('weekly_stats_snapshots', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  weekStart: timestamp('week_start').notNull(),
+  totalItems: integer('total_items').notNull(),
+  completed: integer('completed').notNull(),
+  watching: integer('watching').notNull(),
+  toWatch: integer('to_watch').notNull(),
+  completionsThisWeek: integer('completions_this_week').notNull(),
+  completionVelocity: decimal('completion_velocity', { precision: 5, scale: 2 }),
+  streakDays: integer('streak_days').notNull(),
+  genreGravity: text('genre_gravity'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdWeekStartIdx: index('weekly_stats_snapshots_user_id_week_start_idx').on(table.userId, table.weekStart),
+}));
+
+export const idempotencyKeysRelations = relations(idempotencyKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [idempotencyKeys.userId],
+    references: [users.id],
+  }),
+}));
+
+export const weeklyStatsSnapshotsRelations = relations(weeklyStatsSnapshots, ({ one }) => ({
+  user: one(users, {
+    fields: [weeklyStatsSnapshots.userId],
+    references: [users.id],
+  }),
+}));
+
+export const usersWithSnapshotsRelations = relations(users, ({ many }) => ({
+  weeklyStatsSnapshots: many(weeklyStatsSnapshots),
 }));
 
 // Types
@@ -82,3 +210,13 @@ export type MediaItem = typeof mediaItems.$inferSelect;
 export type InsertMediaItem = typeof mediaItems.$inferInsert;
 export type MediaTracking = typeof mediaTracking.$inferSelect;
 export type InsertMediaTracking = typeof mediaTracking.$inferInsert;
+export type RefreshToken = typeof refreshTokens.$inferSelect;
+export type InsertRefreshToken = typeof refreshTokens.$inferInsert;
+export type IdempotencyKey = typeof idempotencyKeys.$inferSelect;
+export type InsertIdempotencyKey = typeof idempotencyKeys.$inferInsert;
+export type Season = typeof seasons.$inferSelect;
+export type InsertSeason = typeof seasons.$inferInsert;
+export type Episode = typeof episodes.$inferSelect;
+export type InsertEpisode = typeof episodes.$inferInsert;
+export type WeeklyStatsSnapshot = typeof weeklyStatsSnapshots.$inferSelect;
+export type InsertWeeklyStatsSnapshot = typeof weeklyStatsSnapshots.$inferInsert;

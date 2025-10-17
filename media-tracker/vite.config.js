@@ -9,12 +9,16 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       },
       includeAssets: ['favicon.ico'],
       devOptions: {
-        enabled: true
+        enabled: true,
+        type: 'module'
       },
       manifest: {
         name: 'Media Tracker',
@@ -48,6 +52,11 @@ export default defineConfig({
       }
     })
   ],
+  resolve: {
+    alias: {
+      '@tanstack/react-query': '/src/lib/tanstack-react-query.tsx',
+    },
+  },
   server: {
     host: '0.0.0.0',
     port: 5000,

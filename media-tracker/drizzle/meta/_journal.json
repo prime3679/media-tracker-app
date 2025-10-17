@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1760554058714,
+      "tag": "0000_closed_cassandra_nova",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1760556184943,
+      "tag": "0001_simple_leo",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1760559029810,
+      "tag": "0002_fresh_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1760632442903,
+      "tag": "0003_blushing_doctor_doom",
+      "breakpoints": true
+    }
+  ]
+}
