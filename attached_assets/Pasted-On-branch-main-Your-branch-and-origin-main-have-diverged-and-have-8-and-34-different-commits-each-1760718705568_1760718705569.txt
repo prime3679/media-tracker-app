@@ -1,0 +1,85 @@
+On branch main
+Your branch and 'origin/main' have diverged,
+and have 8 and 34 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Changes to be committed:
+    new file:   .github/workflows/ci.yml
+    new file:   media-tracker/.env.example
+    new file:   media-tracker/.github/workflows/ci.yml
+    new file:   media-tracker/drizzle/0000_closed_cassandra_nova.sql
+    new file:   media-tracker/drizzle/0001_simple_leo.sql
+    new file:   media-tracker/drizzle/0002_fresh_kate_bishop.sql
+    new file:   media-tracker/drizzle/0003_blushing_doctor_doom.sql
+    new file:   media-tracker/drizzle/meta/0000_snapshot.json
+    new file:   media-tracker/drizzle/meta/0001_snapshot.json
+    new file:   media-tracker/drizzle/meta/0002_snapshot.json
+    new file:   media-tracker/drizzle/meta/0003_snapshot.json
+    new file:   media-tracker/drizzle/meta/_journal.json
+    new file:   media-tracker/e2e/offline-sync.spec.ts
+    new file:   media-tracker/e2e/smoke.spec.ts
+    modified:   media-tracker/eslint.config.js
+    modified:   media-tracker/package-lock.json
+    modified:   media-tracker/package.json
+    new file:   media-tracker/playwright.config.ts
+    new file:   media-tracker/server/__tests__/auth.test.ts
+    new file:   media-tracker/server/__tests__/authorization.test.ts
+    new file:   media-tracker/server/__tests__/demo-failing.test.ts
+    new file:   media-tracker/server/__tests__/digest-perf.test.ts
+    new file:   media-tracker/server/__tests__/episodes.test.ts
+    new file:   media-tracker/server/__tests__/import.test.ts
+    new file:   media-tracker/server/__tests__/media.test.ts
+    new file:   media-tracker/server/__tests__/next.test.ts
+    new file:   media-tracker/server/__tests__/stats2.test.ts
+    modified:   media-tracker/server/api.ts
+    modified:   media-tracker/server/db.ts
+    new file:   media-tracker/server/jobs/weeklyDigest.ts
+    new file:   media-tracker/server/middleware/auth.ts
+    new file:   media-tracker/server/middleware/idempotency.ts
+    new file:   media-tracker/server/middleware/security.ts
+    new file:   media-tracker/server/routes/auth.ts
+    new file:   media-tracker/server/routes/import.ts
+    new file:   media-tracker/server/routes/next.ts
+    new file:   media-tracker/server/routes/search.ts
+    new file:   media-tracker/server/routes/v1.ts
+    new file:   media-tracker/server/scripts/verify-search-performance.ts
+    new file:   media-tracker/server/services/auth.ts
+    new file:   media-tracker/server/services/cache.ts
+    new file:   media-tracker/server/services/next.ts
+    new file:   media-tracker/server/services/openlibrary.ts
+    new file:   media-tracker/server/services/tmdb.ts
+    modified:   media-tracker/server/storage.ts
+    new file:   media-tracker/server/utils/openapi.ts
+    modified:   media-tracker/shared/schema.ts
+    new file:   media-tracker/shared/schemas/index.ts
+    modified:   media-tracker/src/App.css
+    new file:   media-tracker/src/App.tsx
+    new file:   media-tracker/src/components/TvEpisodeControls.tsx
+    new file:   media-tracker/src/lib/syncStore.ts
+    new file:   media-tracker/src/lib/tanstack-react-query.tsx
+    deleted:    media-tracker/src/main.jsx
+    new file:   media-tracker/src/main.tsx
+    deleted:    media-tracker/src/services/api.js
+    new file:   media-tracker/src/services/api.ts
+    new file:   media-tracker/src/stats.test.ts
+    new file:   media-tracker/src/sw.ts
+    new file:   media-tracker/src/utils/stats.ts
+    new file:   media-tracker/tsconfig.app.json
+    new file:   media-tracker/tsconfig.json
+    modified:   media-tracker/vite.config.js
+    new file:   media-tracker/vitest.config.ts
+    new file:   media-tracker/vitest.setup.ts
+    modified:   replit.md
+
+Unmerged paths:
+  (use "git add/rm <file>..." as appropriate to mark resolution)
+    deleted by them: media-tracker/src/App.jsx
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+    "attached_assets/Screenshot 2025-10-17 at 12.29.22\342\200\257PM_1760718571889.png"
+    "attached_assets/Screenshot 2025-10-17 at 12.30.55\342\200\257PM_1760718664146.png"
