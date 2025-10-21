@@ -15,7 +15,15 @@ router.get('/', async (req, res) => {
     const userId = req.user!.userId;
     const { q } = searchSchema.parse({ q: req.query.q });
 
-    const tsQuery = q.trim().split(/\s+/).join(' & ');
+    const weightedSearchVector = sql`
+      (
+        setweight(to_tsvector('english', coalesce(${mediaItems.title}, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(${mediaItems.director}, '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(${mediaItems.author}, '')), 'B')
+      )
+    `;
+
+    const tsQuery = sql`plainto_tsquery('english', ${q})`;
 
     const results = await db
       .select({
@@ -39,10 +47,8 @@ router.get('/', async (req, res) => {
         updatedAt: mediaItems.updatedAt,
         rank: sql<number>`
           ts_rank(
-            setweight(to_tsvector('english', coalesce(${mediaItems.title}, '')), 'A') ||
-            setweight(to_tsvector('english', coalesce(${mediaItems.director}, '')), 'B') ||
-            setweight(to_tsvector('english', coalesce(${mediaItems.author}, '')), 'B'),
-            to_tsquery('english', ${tsQuery})
+            ${weightedSearchVector},
+            ${tsQuery}
           ) +
           similarity(${mediaItems.title}, ${q}) * 2
         `.as('rank'),
@@ -50,11 +56,7 @@ router.get('/', async (req, res) => {
       .from(mediaItems)
       .where(
         sql`${mediaItems.userId} = ${userId} AND (
-          (
-            setweight(to_tsvector('english', coalesce(${mediaItems.title}, '')), 'A') ||
-            setweight(to_tsvector('english', coalesce(${mediaItems.director}, '')), 'B') ||
-            setweight(to_tsvector('english', coalesce(${mediaItems.author}, '')), 'B')
-          ) @@ to_tsquery('english', ${tsQuery})
+          ${weightedSearchVector} @@ ${tsQuery}
           OR
           similarity(${mediaItems.title}, ${q}) > 0.1
         )`
