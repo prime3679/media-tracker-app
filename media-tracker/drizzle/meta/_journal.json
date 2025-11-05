@@ -50,6 +50,13 @@
       "when": 1762352201057,
       "tag": "0006_cuddly_may_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1762354862539,
+      "tag": "0007_strange_colossus",
+      "breakpoints": true
     }
   ]
 }

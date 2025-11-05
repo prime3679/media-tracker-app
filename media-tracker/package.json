@@ -16,7 +16,9 @@
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "seed:catalog": "tsx server/scripts/seed-catalog.ts",
+    "seed:genres": "tsx server/scripts/seed-genres.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.1.0",
