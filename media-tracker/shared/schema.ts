@@ -203,6 +203,57 @@ export const usersWithSnapshotsRelations = relations(users, ({ many }) => ({
   weeklyStatsSnapshots: many(weeklyStatsSnapshots),
 }));
 
+// Genres table - normalized genre system with visual identity
+export const genres = pgTable('genres', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  slug: text('slug').notNull().unique(),
+  color: text('color').notNull(), // Hex color for visual identity
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  slugIdx: index('genres_slug_idx').on(table.slug),
+}));
+
+// Many-to-many junction table for media items and genres
+export const mediaGenres = pgTable('media_genres', {
+  id: serial('id').primaryKey(),
+  mediaItemId: integer('media_item_id').notNull(),
+  genreId: integer('genre_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  mediaItemIdIdx: index('media_genres_media_item_id_idx').on(table.mediaItemId),
+  genreIdIdx: index('media_genres_genre_id_idx').on(table.genreId),
+  // Unique constraint to prevent duplicates
+  mediaItemGenreUnique: index('media_genres_media_item_genre_unique').on(table.mediaItemId, table.genreId),
+}));
+
+// Genre relations
+export const genresRelations = relations(genres, ({ many }) => ({
+  mediaGenres: many(mediaGenres),
+}));
+
+export const mediaGenresRelations = relations(mediaGenres, ({ one }) => ({
+  mediaItem: one(mediaItems, {
+    fields: [mediaGenres.mediaItemId],
+    references: [mediaItems.id],
+  }),
+  genre: one(genres, {
+    fields: [mediaGenres.genreId],
+    references: [genres.id],
+  }),
+}));
+
+// Update mediaItems relations to include genres
+export const mediaItemsWithGenresRelations = relations(mediaItems, ({ one, many }) => ({
+  user: one(users, {
+    fields: [mediaItems.userId],
+    references: [users.id],
+  }),
+  tracking: many(mediaTracking),
+  seasons: many(seasons),
+  mediaGenres: many(mediaGenres),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -220,3 +271,7 @@ export type Episode = typeof episodes.$inferSelect;
 export type InsertEpisode = typeof episodes.$inferInsert;
 export type WeeklyStatsSnapshot = typeof weeklyStatsSnapshots.$inferSelect;
 export type InsertWeeklyStatsSnapshot = typeof weeklyStatsSnapshots.$inferInsert;
+export type Genre = typeof genres.$inferSelect;
+export type InsertGenre = typeof genres.$inferInsert;
+export type MediaGenre = typeof mediaGenres.$inferSelect;
+export type InsertMediaGenre = typeof mediaGenres.$inferInsert;

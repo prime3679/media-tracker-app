@@ -33,8 +33,9 @@ import {
   buildSparklinePath,
   formatRelativeTime,
 } from './utils/stats';
+import NextUpView from './views/NextUpView';
 
-type Tab = 'library' | 'stats' | 'search';
+type Tab = 'nextup' | 'library' | 'stats' | 'search';
 type StatusFilter = 'all' | MediaTracking['status'];
 type TypeFilter = 'all' | MediaItem['mediaType'];
 
@@ -132,7 +133,7 @@ const createOptimisticMediaItem = (
 });
 
 function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('library');
+  const [activeTab, setActiveTab] = useState<Tab>('nextup');
   const [showAddForm, setShowAddForm] = useState(false);
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
@@ -191,7 +192,7 @@ function App() {
   const nextUpQuery = useQuery<NextUpItem[]>({
     queryKey: nextQueryKey,
     queryFn: () => nextApi.list(),
-    enabled: activeTab === 'library',
+    enabled: activeTab === 'nextup',
   });
 
   const trimmedSearchTerm = searchTerm.trim();
@@ -699,6 +700,13 @@ function App() {
 
       <nav className="tabs">
         <button
+          className={activeTab === 'nextup' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('nextup')}
+          aria-current={activeTab === 'nextup' ? 'page' : undefined}
+        >
+          ✨ Next Up
+        </button>
+        <button
           className={activeTab === 'library' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('library')}
           aria-current={activeTab === 'library' ? 'page' : undefined}
@@ -720,6 +728,10 @@ function App() {
           📊 Stats
         </button>
       </nav>
+
+      {activeTab === 'nextup' && (
+        <NextUpView />
+      )}
 
       {activeTab === 'library' && (
         <main className="main">
