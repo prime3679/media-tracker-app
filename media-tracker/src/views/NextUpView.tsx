@@ -7,11 +7,10 @@
  * This is where magic happens ✨
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  nextApi,
   nextQueryKey,
   mediaApi,
   mediaQueryKey,
@@ -27,6 +26,7 @@ import {
 } from '../animations/transitions';
 import SkipReasonModal from '../components/SkipReasonModal';
 import TrailerModal from '../components/TrailerModal';
+import MoodSelector, { type MoodType } from '../components/MoodSelector';
 import './NextUpView.css';
 
 interface NextUpViewProps {
@@ -38,13 +38,38 @@ export default function NextUpView({ className }: NextUpViewProps) {
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
   const [showSkipModal, setShowSkipModal] = useState(false);
   const [showTrailerModal, setShowTrailerModal] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<MoodType | null>(() => {
+    // Load mood from localStorage on mount
+    const saved = localStorage.getItem('nextup-mood');
+    return saved ? (saved as MoodType) : null;
+  });
 
   const queryClient = useQueryClient();
 
-  // Fetch next up recommendations
-  const { data: nextUpItems, isLoading } = useQuery({
-    queryKey: nextQueryKey,
-    queryFn: ({ signal }) => nextApi.list(signal),
+  // Persist mood to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedMood) {
+      localStorage.setItem('nextup-mood', selectedMood);
+    } else {
+      localStorage.removeItem('nextup-mood');
+    }
+    // Reset to first item when mood changes
+    setCurrentIndex(0);
+  }, [selectedMood]);
+
+  // Fetch next up recommendations (with mood filter if selected)
+  const { data: nextUpItems, isLoading } = useQuery<NextUpItem[]>({
+    queryKey: [...nextQueryKey, selectedMood] as const,
+    queryFn: (async (context: any) => {
+      const params = new URLSearchParams();
+      if (selectedMood) {
+        params.append('mood', selectedMood);
+      }
+      const url = `/api/next${params.toString() ? `?${params}` : ''}`;
+      const response = await fetch(url, { signal: context.signal });
+      const data: NextUpItem[] = await response.json();
+      return data;
+    }) as any,
   });
 
   // Mutation to mark item as watching
@@ -130,7 +155,7 @@ export default function NextUpView({ className }: NextUpViewProps) {
     );
   }
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = 100;
     const velocity = Math.abs(info.velocity.x);
 
@@ -204,6 +229,13 @@ export default function NextUpView({ className }: NextUpViewProps) {
 
   return (
     <div className={`next-up-view ${className || ''}`}>
+      {/* Mood Selector */}
+      <MoodSelector
+        selectedMood={selectedMood}
+        onMoodSelect={setSelectedMood}
+        className="next-up-mood-selector"
+      />
+
       <AnimatePresence mode="wait">
         <motion.div
           key={currentItem.id}

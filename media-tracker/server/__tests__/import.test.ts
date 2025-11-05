@@ -43,12 +43,16 @@ describe('Import API', () => {
           title: 'The Matrix',
           year: '1999',
           poster: 'https://example.com/poster.jpg',
+          backdrop: 'https://example.com/backdrop.jpg',
+          trailer: null,
           external_id: 'tmdb:603',
         },
         {
           title: 'The Matrix Reloaded',
           year: '2003',
           poster: 'https://example.com/poster2.jpg',
+          backdrop: 'https://example.com/backdrop2.jpg',
+          trailer: null,
           external_id: 'tmdb:604',
         },
       ]);
@@ -72,6 +76,8 @@ describe('Import API', () => {
           title: 'Breaking Bad',
           year: '2008',
           poster: 'https://example.com/poster.jpg',
+          backdrop: 'https://example.com/backdrop.jpg',
+          trailer: null,
           external_id: 'tmdb:1396',
         },
       ]);
@@ -91,6 +97,8 @@ describe('Import API', () => {
           title: 'The Hobbit',
           year: '1937',
           poster: 'https://example.com/poster.jpg',
+          backdrop: null,
+          trailer: null,
           external_id: 'openlibrary:OL27479W',
         },
       ]);
@@ -128,6 +136,8 @@ describe('Import API', () => {
         title: `Movie ${i}`,
         year: '2020',
         poster: null,
+        backdrop: null,
+        trailer: null,
         external_id: `tmdb:${i}`,
       }));
 

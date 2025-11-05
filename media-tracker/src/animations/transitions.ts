@@ -16,17 +16,17 @@ import { Transition, Variants } from 'framer-motion';
  * Apple's signature easing curve - smooth and natural
  * Perfect for most UI interactions
  */
-export const easeOut = [0.4, 0.0, 0.2, 1];
+export const easeOut = [0.4, 0.0, 0.2, 1] as const;
 
 /**
  * Snappy easing for quick interactions
  */
-export const easeInOut = [0.4, 0.0, 0.6, 1];
+export const easeInOut = [0.4, 0.0, 0.6, 1] as const;
 
 /**
  * Bouncy, playful easing
  */
-export const easeOutBack = [0.34, 1.56, 0.64, 1];
+export const easeOutBack = [0.34, 1.56, 0.64, 1] as const;
 
 // ============================================================================
 // TRANSITIONS
@@ -288,7 +288,7 @@ export const swipeToDismiss = {
   drag: 'x' as const,
   dragConstraints: { left: 0, right: 0 },
   dragElastic: 0.7,
-  onDragEnd: (event: any, info: any) => {
+  onDragEnd: (_event: any, info: any) => {
     const threshold = 100;
     if (Math.abs(info.offset.x) > threshold) {
       return info.offset.x > 0 ? 'right' : 'left';

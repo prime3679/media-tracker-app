@@ -7,7 +7,13 @@
 
 import { db } from '../db.js';
 import { mediaItems, mediaTracking } from '../../shared/schema.js';
-import { eq, and, gte, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, gte, desc } from 'drizzle-orm';
+import {
+  type MoodType,
+  MOOD_PRESETS,
+  calculateMoodMatchScore,
+  getMoodContext
+} from './moods.js';
 
 export interface EnhancedNextUpItem {
   id: number;
@@ -60,15 +66,18 @@ interface UserTaste {
 /**
  * Main function to get intelligent recommendations
  */
-export async function getEnhancedNextUpItems(userId: number): Promise<EnhancedNextUpItem[]> {
+export async function getEnhancedNextUpItems(
+  userId: number,
+  mood?: MoodType
+): Promise<EnhancedNextUpItem[]> {
   // Step 1: Analyze user taste
   const userTaste = await analyzeUserTaste(userId);
 
-  // Step 2: Get in-progress items (highest priority)
-  const inProgress = await getInProgressItems(userId);
+  // Step 2: Get in-progress items (highest priority, unless mood filtering)
+  const inProgress = mood ? [] : await getInProgressItems(userId);
 
   // Step 3: Get smart recommendations for unwatched items
-  const recommendations = await getSmartRecommendations(userId, userTaste);
+  const recommendations = await getSmartRecommendations(userId, userTaste, mood);
 
   // Step 4: Combine and limit to top 10
   const combined = [...inProgress, ...recommendations].slice(0, 10);
@@ -223,10 +232,14 @@ async function getInProgressItems(userId: number): Promise<EnhancedNextUpItem[]>
 }
 
 /**
- * Get smart recommendations based on user taste
+ * Get smart recommendations based on user taste and optional mood
  */
-async function getSmartRecommendations(userId: number, taste: UserTaste): Promise<EnhancedNextUpItem[]> {
-  if (taste.topGenres.length === 0) {
+async function getSmartRecommendations(
+  userId: number,
+  taste: UserTaste,
+  mood?: MoodType
+): Promise<EnhancedNextUpItem[]> {
+  if (taste.topGenres.length === 0 && !mood) {
     // New user - return recently added items
     return getRecentlyAddedItems(userId);
   }
@@ -256,21 +269,40 @@ async function getSmartRecommendations(userId: number, taste: UserTaste): Promis
   const scoredItems = unwatchedItems.map(({ item, tracking }) => {
     const genres = parseGenres(item.genres);
 
-    // Calculate match score (0-100)
-    let score = 0;
+    // Calculate base taste match score (0-100)
+    let tasteScore = 0;
     const matchedGenres: string[] = [];
 
-    for (const genre of genres) {
-      const genreGravity = taste.topGenres.find(g => g.genre === genre);
-      if (genreGravity) {
-        score += genreGravity.weight;
-        matchedGenres.push(genre);
+    if (taste.topGenres.length > 0) {
+      for (const genre of genres) {
+        const genreGravity = taste.topGenres.find(g => g.genre === genre);
+        if (genreGravity) {
+          tasteScore += genreGravity.weight;
+          matchedGenres.push(genre);
+        }
       }
+
+      // Normalize taste score to 0-100
+      const maxPossibleScore = taste.topGenres[0]?.weight * genres.length || 100;
+      tasteScore = Math.min(100, Math.round((tasteScore / maxPossibleScore) * 100));
     }
 
-    // Normalize score to 0-100
-    const maxPossibleScore = taste.topGenres[0]?.weight * genres.length || 100;
-    const normalizedScore = Math.min(100, Math.round((score / maxPossibleScore) * 100));
+    // Calculate mood match score if mood is specified
+    let moodScore = 0;
+    if (mood) {
+      moodScore = calculateMoodMatchScore({
+        genres,
+        mediaType: item.mediaType,
+        totalEpisodes: item.totalEpisodes,
+        rating: parseRating(tracking.rating),
+      }, mood);
+    }
+
+    // Final score: If mood specified, weight it heavily (70% mood, 30% taste)
+    // Otherwise use taste score only
+    const finalScore = mood
+      ? Math.round(moodScore * 0.7 + tasteScore * 0.3)
+      : tasteScore;
 
     // Find similar items you loved
     const matchedItems = taste.recentCompletions
@@ -281,16 +313,18 @@ async function getSmartRecommendations(userId: number, taste: UserTaste): Promis
       .slice(0, 3)
       .map(c => c.title);
 
-    // Generate match reason
-    const matchReason = generateMatchReason(genres, matchedGenres, taste);
+    // Generate match reason (mood-aware)
+    const matchReason = mood
+      ? `${MOOD_PRESETS[mood].vibe}`
+      : generateMatchReason(genres, matchedGenres, taste);
 
     return {
       ...item,
       tracking,
-      matchScore: normalizedScore,
+      matchScore: finalScore,
       matchReason,
       matchedItems,
-      suggestedContext: getSuggestedContext(item, tracking),
+      suggestedContext: mood ? getMoodContext(mood) : getSuggestedContext(item, tracking),
       estimatedTime: getEstimatedTime(item, tracking),
     };
   });
@@ -383,7 +417,7 @@ function applyDiversity(items: EnhancedNextUpItem[]): EnhancedNextUpItem[] {
  * Generate human-readable match reason
  */
 function generateMatchReason(
-  itemGenres: string[],
+  _itemGenres: string[],
   matchedGenres: string[],
   taste: UserTaste
 ): string {
@@ -410,7 +444,7 @@ function generateMatchReason(
  */
 function getSuggestedContext(
   item: typeof mediaItems.$inferSelect,
-  tracking: typeof mediaTracking.$inferSelect
+  _tracking: typeof mediaTracking.$inferSelect
 ): string {
   const now = new Date();
   const hour = now.getHours();

@@ -10,7 +10,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { genres, mediaGenres, mediaItems } from '../../shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 // Genre color palette - Each genre gets a distinct, beautiful color
 const GENRE_DEFINITIONS = [
