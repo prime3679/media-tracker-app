@@ -23,6 +23,7 @@ export const mediaItems = pgTable('media_items', {
   description: text('description'),
   imageUrl: text('image_url'),
   backdropUrl: text('backdrop_url'),  // Cinematic backdrop image (16:9)
+  trailerUrl: text('trailer_url'),    // YouTube trailer URL
   releaseDate: text('release_date'), // Store as string for flexibility
   genres: text('genres'), // JSON string of genres
   director: text('director'), // For movies
@@ -255,6 +256,30 @@ export const mediaItemsWithGenresRelations = relations(mediaItems, ({ one, many 
   mediaGenres: many(mediaGenres),
 }));
 
+// Skip reasons for algorithm learning
+export const skipReasons = pgTable('skip_reasons', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  mediaItemId: integer('media_item_id').notNull(),
+  reason: text('reason').notNull(), // 'not_interested', 'wrong_mood', 'too_long', 'seen_it', 'other'
+  feedback: text('feedback'), // Optional text feedback
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index('skip_reasons_user_id_idx').on(table.userId),
+  mediaItemIdIdx: index('skip_reasons_media_item_id_idx').on(table.mediaItemId),
+}));
+
+export const skipReasonsRelations = relations(skipReasons, ({ one }) => ({
+  user: one(users, {
+    fields: [skipReasons.userId],
+    references: [users.id],
+  }),
+  mediaItem: one(mediaItems, {
+    fields: [skipReasons.mediaItemId],
+    references: [mediaItems.id],
+  }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -276,3 +301,5 @@ export type Genre = typeof genres.$inferSelect;
 export type InsertGenre = typeof genres.$inferInsert;
 export type MediaGenre = typeof mediaGenres.$inferSelect;
 export type InsertMediaGenre = typeof mediaGenres.$inferInsert;
+export type SkipReason = typeof skipReasons.$inferSelect;
+export type InsertSkipReason = typeof skipReasons.$inferInsert;

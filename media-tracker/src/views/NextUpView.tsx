@@ -25,6 +25,8 @@ import {
   smooth,
   heroCardHover,
 } from '../animations/transitions';
+import SkipReasonModal from '../components/SkipReasonModal';
+import TrailerModal from '../components/TrailerModal';
 import './NextUpView.css';
 
 interface NextUpViewProps {
@@ -34,6 +36,8 @@ interface NextUpViewProps {
 export default function NextUpView({ className }: NextUpViewProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
+  const [showSkipModal, setShowSkipModal] = useState(false);
+  const [showTrailerModal, setShowTrailerModal] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -144,6 +148,15 @@ export default function NextUpView({ className }: NextUpViewProps) {
   };
 
   const handleSkip = () => {
+    // Show skip reason modal
+    setShowSkipModal(true);
+  };
+
+  const handleSkipSubmit = async (reason: string, feedback?: string) => {
+    // TODO: Send skip reason to backend for algorithm learning
+    console.log('Skip reason:', reason, feedback);
+
+    // Animate to next item
     setExitDirection('left');
     setTimeout(() => {
       if (currentIndex < nextUpItems.length - 1) {
@@ -165,6 +178,26 @@ export default function NextUpView({ className }: NextUpViewProps) {
       }
       setExitDirection(null);
     }, 300);
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: currentItem.title,
+      text: `Check out ${currentItem.title}${currentItem.matchScore ? ` (${currentItem.matchScore}% match for me!)` : ''}`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: Copy to clipboard
+        await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
+        alert('Link copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
   };
 
   const remainingCount = nextUpItems.length - currentIndex - 1;
@@ -281,6 +314,30 @@ export default function NextUpView({ className }: NextUpViewProps) {
               <p className="hero-description">{currentItem.description}</p>
             )}
 
+            {/* Secondary actions */}
+            <div className="hero-secondary-actions">
+              {currentItem.trailerUrl && (
+                <motion.button
+                  className="btn-icon"
+                  onClick={() => setShowTrailerModal(true)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  title="Watch Trailer"
+                >
+                  🎬 Trailer
+                </motion.button>
+              )}
+              <motion.button
+                className="btn-icon"
+                onClick={handleShare}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Share"
+              >
+                📤 Share
+              </motion.button>
+            </div>
+
             {/* Actions */}
             <div className="hero-actions">
               <motion.button
@@ -330,6 +387,21 @@ export default function NextUpView({ className }: NextUpViewProps) {
           ← Swipe to browse →
         </motion.div>
       )}
+
+      {/* Modals */}
+      <SkipReasonModal
+        isOpen={showSkipModal}
+        onClose={() => setShowSkipModal(false)}
+        onSubmit={handleSkipSubmit}
+        itemTitle={currentItem?.title || ''}
+      />
+
+      <TrailerModal
+        isOpen={showTrailerModal}
+        onClose={() => setShowTrailerModal(false)}
+        trailerUrl={currentItem?.trailerUrl || null}
+        itemTitle={currentItem?.title || ''}
+      />
     </div>
   );
 }

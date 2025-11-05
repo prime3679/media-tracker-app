@@ -16,6 +16,7 @@ export interface ImportSearchResult {
   year: string;
   poster: string | null;
   backdrop: string | null;
+  trailer: string | null;
   external_id: string;
 }
 
@@ -69,6 +70,7 @@ export async function searchMovies(query: string): Promise<ImportSearchResult[]>
         year: item.release_date?.substring(0, 4) || '',
         poster: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : null,
         backdrop: item.backdrop_path ? `${TMDB_BACKDROP_BASE}${item.backdrop_path}` : null,
+        trailer: null, // TODO: Fetch trailers in background job
         external_id: `tmdb:${item.id}`,
       }));
 
@@ -109,6 +111,7 @@ export async function searchTvShows(query: string): Promise<ImportSearchResult[]
         year: item.first_air_date?.substring(0, 4) || '',
         poster: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : null,
         backdrop: item.backdrop_path ? `${TMDB_BACKDROP_BASE}${item.backdrop_path}` : null,
+        trailer: null, // TODO: Fetch trailers in background job
         external_id: `tmdb:${item.id}`,
       }));
 
