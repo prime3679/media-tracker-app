@@ -5,6 +5,7 @@ export interface TmdbSearchResult {
   title?: string;
   name?: string;
   poster_path: string | null;
+  backdrop_path: string | null;
   release_date?: string;
   first_air_date?: string;
   media_type?: string;
@@ -14,12 +15,14 @@ export interface ImportSearchResult {
   title: string;
   year: string;
   poster: string | null;
+  backdrop: string | null;
   external_id: string;
 }
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY || '';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+const TMDB_BACKDROP_BASE = 'https://image.tmdb.org/t/p/w1280';  // Larger for backdrops
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 let lastRequestTime = 0;
@@ -65,6 +68,7 @@ export async function searchMovies(query: string): Promise<ImportSearchResult[]>
         title: item.title || '',
         year: item.release_date?.substring(0, 4) || '',
         poster: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : null,
+        backdrop: item.backdrop_path ? `${TMDB_BACKDROP_BASE}${item.backdrop_path}` : null,
         external_id: `tmdb:${item.id}`,
       }));
 
@@ -104,6 +108,7 @@ export async function searchTvShows(query: string): Promise<ImportSearchResult[]
         title: item.name || '',
         year: item.first_air_date?.substring(0, 4) || '',
         poster: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : null,
+        backdrop: item.backdrop_path ? `${TMDB_BACKDROP_BASE}${item.backdrop_path}` : null,
         external_id: `tmdb:${item.id}`,
       }));
 

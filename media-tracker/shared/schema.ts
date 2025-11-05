@@ -22,6 +22,7 @@ export const mediaItems = pgTable('media_items', {
   title: text('title').notNull(),
   description: text('description'),
   imageUrl: text('image_url'),
+  backdropUrl: text('backdrop_url'),  // Cinematic backdrop image (16:9)
   releaseDate: text('release_date'), // Store as string for flexibility
   genres: text('genres'), // JSON string of genres
   director: text('director'), // For movies

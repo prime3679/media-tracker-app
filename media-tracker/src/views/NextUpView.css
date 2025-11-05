@@ -109,6 +109,32 @@
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
+/* Match Score */
+.hero-match {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.match-score {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 100px;
+  font-size: 0.938rem;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.match-detail {
+  font-size: 0.938rem;
+  color: #d1d5db;
+  font-weight: 500;
+}
+
 /* Context */
 .hero-context {
   font-size: 1.125rem;

@@ -192,9 +192,9 @@ export default function NextUpView({ className }: NextUpViewProps) {
         >
           {/* Backdrop Image */}
           <div className="hero-backdrop">
-            {currentItem.imageUrl && (
+            {(currentItem.backdropUrl || currentItem.imageUrl) && (
               <motion.img
-                src={currentItem.imageUrl}
+                src={currentItem.backdropUrl || currentItem.imageUrl || ''}
                 alt=""
                 className="backdrop-image"
                 initial={{ scale: 1 }}
@@ -229,9 +229,22 @@ export default function NextUpView({ className }: NextUpViewProps) {
 
             <h1 className="hero-title">{currentItem.title}</h1>
 
+            {/* Match score */}
+            {currentItem.matchScore !== undefined && currentItem.matchScore > 0 && (
+              <div className="hero-match">
+                <span className="match-score">{currentItem.matchScore}% Match</span>
+                {currentItem.matchedItems && currentItem.matchedItems.length > 0 && (
+                  <span className="match-detail">
+                    • You loved {currentItem.matchedItems[0]}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Context explanation */}
             <p className="hero-context">
-              {getContextExplanation(currentItem)}
+              {currentItem.matchReason || getContextExplanation(currentItem)}
+              {currentItem.suggestedContext && ` • ${currentItem.suggestedContext}`}
             </p>
 
             {/* Metadata */}
@@ -240,6 +253,9 @@ export default function NextUpView({ className }: NextUpViewProps) {
                 <span className="metadata-item">
                   📅 {new Date(currentItem.releaseDate).getFullYear()}
                 </span>
+              )}
+              {currentItem.estimatedTime && (
+                <span className="metadata-item">⏱️ {currentItem.estimatedTime}</span>
               )}
               {currentItem.director && (
                 <span className="metadata-item">🎬 {currentItem.director}</span>

@@ -17,6 +17,7 @@ const importApplySchema = z.object({
   title: z.string().min(1),
   year: z.string(),
   poster: z.string().nullable(),
+  backdrop: z.string().nullable().optional(),
   external_id: z.string().min(1),
   type: z.enum(['movie', 'tv_show', 'book']),
 });
@@ -93,6 +94,7 @@ router.post('/apply', async (req, res) => {
         title: validatedData.title,
         mediaType: validatedData.type,
         imageUrl: validatedData.poster,
+        backdropUrl: validatedData.backdrop || null,
         releaseDate: validatedData.year,
       };
 

@@ -50,10 +50,17 @@ const mediaItemResponseSchema = z.object({
   director: z.string().nullable(),
   genres: z.string().nullable(),
   imageUrl: z.string().nullable().optional(),
+  backdropUrl: z.string().nullable().optional(),
   releaseDate: z.string().nullable().optional(),
   createdAt: isoDateSchema,
   updatedAt: isoDateSchema,
   tracking: trackingResponseSchema.nullable(),
+  // Enhanced Next Up fields (optional for backward compatibility)
+  matchScore: z.number().optional(),
+  matchReason: z.string().optional(),
+  matchedItems: z.array(z.string()).optional(),
+  suggestedContext: z.string().optional(),
+  estimatedTime: z.string().optional(),
 });
 
 const mediaItemSchema = mediaItemResponseSchema.transform((item) => ({
@@ -136,6 +143,7 @@ const importSearchResultSchema = z.object({
   title: z.string(),
   year: z.string().nullable().optional(),
   poster: z.string().nullable().optional(),
+  backdrop: z.string().nullable().optional(),
   external_id: z.string(),
 });
 
@@ -143,6 +151,7 @@ const importApplyInputSchema = z.object({
   title: z.string(),
   year: z.string().nullable().optional(),
   poster: z.string().nullable().optional(),
+  backdrop: z.string().nullable().optional(),
   external_id: z.string(),
   type: z.enum(['movie', 'tv_show', 'book']),
 });
