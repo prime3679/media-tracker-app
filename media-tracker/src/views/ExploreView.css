@@ -1,0 +1,117 @@
+/**
+ * Explore View Styles
+ * Main container for catalog browsing
+ */
+
+.explore-view {
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #0a0a0f 0%, #141419 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.explore-header {
+  margin-bottom: 2rem;
+}
+
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.explore-title {
+  font-family: 'Playfair Display', 'Georgia', serif;
+  font-size: 3rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.2;
+}
+
+.explore-subtitle {
+  font-size: 1.125rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+/* Filters */
+.explore-filters {
+  max-width: 1400px;
+  margin: 0 auto 2rem;
+  width: 100%;
+}
+
+/* Grid Container */
+.explore-grid-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .explore-view {
+    padding: 1.5rem;
+  }
+
+  .explore-title {
+    font-size: 2.5rem;
+  }
+
+  .explore-subtitle {
+    font-size: 1rem;
+  }
+
+  .explore-header {
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .explore-view {
+    padding: 1rem;
+  }
+
+  .explore-title {
+    font-size: 2rem;
+  }
+
+  .explore-subtitle {
+    font-size: 0.938rem;
+  }
+
+  .explore-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .explore-filters {
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .explore-view {
+    padding: 0.875rem;
+  }
+
+  .explore-title {
+    font-size: 1.75rem;
+  }
+
+  .explore-subtitle {
+    font-size: 0.875rem;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .explore-view {
+    background: linear-gradient(135deg, #0a0a0f 0%, #0f0f14 100%);
+  }
+}
