@@ -388,3 +388,114 @@ export const snapshotsApi = {
       weeklySnapshotListSchema,
     ),
 };
+
+// ============================================================================
+// CATALOG API
+// ============================================================================
+
+const catalogItemSchema = z.object({
+  id: z.number(),
+  mediaType: mediaTypeSchema,
+  title: z.string(),
+  description: z.string().nullable(),
+  imageUrl: z.string().nullable(),
+  backdropUrl: z.string().nullable(),
+  trailerUrl: z.string().nullable(),
+  releaseDate: z.string().nullable(),
+  releaseYear: z.number().nullable(),
+  genres: z.string().nullable(), // JSON array
+  director: z.string().nullable(),
+  cast: z.string().nullable(), // JSON array
+  author: z.string().nullable(),
+  country: z.string().nullable(),
+  language: z.string().nullable(),
+  tmdbId: z.string().nullable(),
+  imdbId: z.string().nullable(),
+  tmdbRating: z.string().nullable(),
+  popularityScore: z.number().nullable(),
+  runtime: z.number().nullable(),
+  totalSeasons: z.number().nullable(),
+  totalEpisodes: z.number().nullable(),
+  curatedReason: z.string().nullable(),
+});
+
+const catalogListSchema = z.array(catalogItemSchema);
+
+export type CatalogItem = z.infer<typeof catalogItemSchema>;
+
+export interface CatalogFilters {
+  mediaType?: 'movie' | 'tv_show' | 'book';
+  mood?: string;
+  decade?: number;
+  genre?: string;
+  country?: string;
+  minRating?: number;
+  search?: string;
+  sortBy?: 'rating' | 'year' | 'popularity' | 'title';
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+}
+
+const addToLibraryResponseSchema = z.object({
+  message: z.string(),
+  mediaItem: mediaItemSchema,
+  tracking: trackingSchema,
+});
+
+export type AddToLibraryResponse = z.infer<typeof addToLibraryResponseSchema>;
+
+const buildCatalogEndpoint = (filters: CatalogFilters) => {
+  const params: Record<string, string> = {};
+
+  if (filters.mediaType) params.mediaType = filters.mediaType;
+  if (filters.mood) params.mood = filters.mood;
+  if (filters.decade !== undefined) params.decade = String(filters.decade);
+  if (filters.genre) params.genre = filters.genre;
+  if (filters.country) params.country = filters.country;
+  if (filters.minRating !== undefined) params.minRating = String(filters.minRating);
+  if (filters.search) params.search = filters.search;
+  if (filters.sortBy) params.sortBy = filters.sortBy;
+  if (filters.sortOrder) params.sortOrder = filters.sortOrder;
+  if (filters.limit !== undefined) params.limit = String(filters.limit);
+  if (filters.offset !== undefined) params.offset = String(filters.offset);
+
+  return buildSearchEndpoint('/catalog/browse', params);
+};
+
+export const catalogApi = {
+  browse: (filters: CatalogFilters = {}, signal?: AbortSignal) =>
+    apiCall({ endpoint: buildCatalogEndpoint(filters), signal }, catalogListSchema),
+
+  getItem: (id: number, signal?: AbortSignal) =>
+    apiCall({ endpoint: `/catalog/${id}`, signal }, catalogItemSchema),
+
+  addToLibrary: (catalogItemId: number, status: 'to_watch' | 'watching' | 'completed' | 'dropped' | 'on_hold' = 'to_watch') =>
+    apiCall(
+      {
+        endpoint: '/catalog/add-to-library',
+        method: 'POST',
+        body: { catalogItemId, status },
+      },
+      addToLibraryResponseSchema,
+    ),
+
+  getGenres: (signal?: AbortSignal) =>
+    apiCall({ endpoint: '/catalog/metadata/genres', signal }, z.array(z.string())),
+
+  getDecades: (signal?: AbortSignal) =>
+    apiCall({ endpoint: '/catalog/metadata/decades', signal }, z.array(z.number())),
+
+  getStats: (signal?: AbortSignal) =>
+    apiCall(
+      { endpoint: '/catalog/metadata/stats', signal },
+      z.array(z.object({
+        mediaType: z.string(),
+        count: z.number(),
+        avgRating: z.number().nullable(),
+      })),
+    ),
+};
+
+export const catalogQueryKey = ['catalog'] as const;
+export type CatalogQueryKey = typeof catalogQueryKey;
