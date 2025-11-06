@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explore Catalog - Preview</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #0a0a0f 0%, #141419 100%);
+      color: white;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .explore-view {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .explore-header {
+      margin-bottom: 2rem;
+    }
+
+    .explore-title {
+      font-family: 'Georgia', serif;
+      font-size: 3rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0 0 0.5rem 0;
+    }
+
+    .explore-subtitle {
+      font-size: 1.125rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Filter Bar */
+    .filter-bar {
+      margin-bottom: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .filter-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .filter-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .search-icon {
+      font-size: 1.25rem;
+      margin-right: 0.75rem;
+      opacity: 0.6;
+    }
+
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: white;
+      font-size: 1rem;
+    }
+
+    .search-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .filter-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.625rem;
+    }
+
+    .filter-chip {
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 100px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    .filter-chip:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: scale(1.05);
+    }
+
+    .filter-chip.active {
+      background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+      border-color: rgba(99, 102, 241, 0.5);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Catalog Grid */
+    .catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .catalog-card {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 2 / 3;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      background: rgba(20, 20, 25, 0.8);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .catalog-card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+    }
+
+    .catalog-card-poster {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .catalog-card-poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .catalog-card-rating {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(16, 185, 129, 0.95);
+      padding: 4px 8px;
+      border-radius: 4px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      z-index: 2;
+    }
+
+    .rating-score {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: white;
+    }
+
+    .catalog-card-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.3) 0%,
+        rgba(0, 0, 0, 0.85) 60%,
+        rgba(0, 0, 0, 0.95) 100%
+      );
+      display: flex;
+      align-items: flex-end;
+      padding: 1rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .catalog-card:hover .catalog-card-overlay {
+      opacity: 1;
+    }
+
+    .overlay-content {
+      width: 100%;
+    }
+
+    .overlay-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: white;
+      margin: 0 0 0.25rem 0;
+      line-height: 1.2;
+    }
+
+    .overlay-year {
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin: 0 0 0.5rem 0;
+    }
+
+    .overlay-genres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .overlay-genre-pill {
+      padding: 0.25rem 0.5rem;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      font-size: 0.688rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .overlay-add-btn {
+      margin-top: 0.5rem;
+      padding: 0.625rem 1rem;
+      background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .overlay-add-btn:hover {
+      background: linear-gradient(135deg, #818cf8 0%, #a5b4fc 100%);
+      transform: scale(1.02);
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      .explore-title {
+        font-size: 2rem;
+      }
+
+      .catalog-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.875rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="explore-view">
+    <!-- Header -->
+    <div class="explore-header">
+      <h1 class="explore-title">Explore Catalog</h1>
+      <p class="explore-subtitle">24 items available</p>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <!-- Search -->
+      <div class="filter-section">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search titles, directors..." class="search-input">
+        </div>
+      </div>
+
+      <!-- Media Type -->
+      <div class="filter-section">
+        <h3 class="filter-label">Type</h3>
+        <div class="filter-chips">
+          <button class="filter-chip active">🎬 Movies</button>
+          <button class="filter-chip">📺 TV Shows</button>
+        </div>
+      </div>
+
+      <!-- Mood -->
+      <div class="filter-section">
+        <h3 class="filter-label">Mood</h3>
+        <div class="filter-chips">
+          <button class="filter-chip">☕ Cozy</button>
+          <button class="filter-chip active">⚡ Thrills</button>
+          <button class="filter-chip">🧠 Thoughtful</button>
+          <button class="filter-chip">😂 Comedy</button>
+          <button class="filter-chip">🌟 Epic</button>
+          <button class="filter-chip">😴 Relaxing</button>
+        </div>
+      </div>
+
+      <!-- Decade -->
+      <div class="filter-section">
+        <h3 class="filter-label">Decade</h3>
+        <div class="filter-chips">
+          <button class="filter-chip">1970s</button>
+          <button class="filter-chip">1980s</button>
+          <button class="filter-chip active">1990s</button>
+          <button class="filter-chip">2000s</button>
+          <button class="filter-chip">2010s</button>
+          <button class="filter-chip">2020s</button>
+        </div>
+      </div>
+
+      <!-- Genre -->
+      <div class="filter-section">
+        <h3 class="filter-label">Genre</h3>
+        <div class="filter-chips">
+          <button class="filter-chip active">Action</button>
+          <button class="filter-chip">Drama</button>
+          <button class="filter-chip">Comedy</button>
+          <button class="filter-chip">Sci-Fi</button>
+          <button class="filter-chip">Horror</button>
+          <button class="filter-chip">Romance</button>
+          <button class="filter-chip">Thriller</button>
+          <button class="filter-chip">Animation</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catalog Grid -->
+    <div class="catalog-grid">
+      <!-- Card 1 -->
+      <div class="catalog-card">
+        <div class="catalog-card-poster">
+          <img src="https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg" alt="The Matrix">
+          <div class="catalog-card-rating">
+            <span class="rating-score">85%</span>
+          </div>
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">The Matrix</h3>
+            <p class="overlay-year">1999</p>
+            <div class="overlay-genres">
+              <span class="overlay-genre-pill">Action</span>
+              <span class="overlay-genre-pill">Sci-Fi</span>
+            </div>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="catalog-card">
+        <div class="catalog-card-poster">
+          <img src="https://image.tmdb.org/t/p/w500/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg" alt="The Shawshank Redemption">
+          <div class="catalog-card-rating">
+            <span class="rating-score">92%</span>
+          </div>
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">The Shawshank Redemption</h3>
+            <p class="overlay-year">1994</p>
+            <div class="overlay-genres">
+              <span class="overlay-genre-pill">Drama</span>
+            </div>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="catalog-card">
+        <div class="catalog-card-poster">
+          <img src="https://image.tmdb.org/t/p/w500/lmZFxXgJE3vgrciwuDib0N8CfQo.jpg" alt="The Dark Knight">
+          <div class="catalog-card-rating">
+            <span class="rating-score">88%</span>
+          </div>
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">The Dark Knight</h3>
+            <p class="overlay-year">2008</p>
+            <div class="overlay-genres">
+              <span class="overlay-genre-pill">Action</span>
+              <span class="overlay-genre-pill">Crime</span>
+              <span class="overlay-genre-pill">Drama</span>
+            </div>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="catalog-card">
+        <div class="catalog-card-poster">
+          <img src="https://image.tmdb.org/t/p/w500/rCzpDGLbOoPwLjy3OAm5NUPOTrC.jpg" alt="Pulp Fiction">
+          <div class="catalog-card-rating">
+            <span class="rating-score">86%</span>
+          </div>
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">Pulp Fiction</h3>
+            <p class="overlay-year">1994</p>
+            <div class="overlay-genres">
+              <span class="overlay-genre-pill">Crime</span>
+              <span class="overlay-genre-pill">Thriller</span>
+            </div>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="catalog-card">
+        <div class="catalog-card-poster">
+          <img src="https://image.tmdb.org/t/p/w500/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg" alt="Inception">
+          <div class="catalog-card-rating">
+            <span class="rating-score">84%</span>
+          </div>
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">Inception</h3>
+            <p class="overlay-year">2010</p>
+            <div class="overlay-genres">
+              <span class="overlay-genre-pill">Action</span>
+              <span class="overlay-genre-pill">Sci-Fi</span>
+            </div>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="catalog-card">
+        <div class="catalog-card-poster">
+          <img src="https://image.tmdb.org/t/p/w500/xBKGJQsAIeweesB79KC89FpBrVr.jpg" alt="Interstellar">
+          <div class="catalog-card-rating">
+            <span class="rating-score">83%</span>
+          </div>
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">Interstellar</h3>
+            <p class="overlay-year">2014</p>
+            <div class="overlay-genres">
+              <span class="overlay-genre-pill">Adventure</span>
+              <span class="overlay-genre-pill">Sci-Fi</span>
+            </div>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- More cards with placeholder styling -->
+      <div class="catalog-card">
+        <div class="catalog-card-poster" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%); display: flex; align-items: center; justify-content: center; font-size: 3rem; opacity: 0.5;">
+          🎬
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">More Movies...</h3>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="catalog-card">
+        <div class="catalog-card-poster" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%); display: flex; align-items: center; justify-content: center; font-size: 3rem; opacity: 0.5;">
+          🎬
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">More Movies...</h3>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="catalog-card">
+        <div class="catalog-card-poster" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%); display: flex; align-items: center; justify-content: center; font-size: 3rem; opacity: 0.5;">
+          🎬
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">More Movies...</h3>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="catalog-card">
+        <div class="catalog-card-poster" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%); display: flex; align-items: center; justify-content: center; font-size: 3rem; opacity: 0.5;">
+          🎬
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">More Movies...</h3>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="catalog-card">
+        <div class="catalog-card-poster" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%); display: flex; align-items: center; justify-content: center; font-size: 3rem; opacity: 0.5;">
+          🎬
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">More Movies...</h3>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="catalog-card">
+        <div class="catalog-card-poster" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%); display: flex; align-items: center; justify-content: center; font-size: 3rem; opacity: 0.5;">
+          🎬
+        </div>
+        <div class="catalog-card-overlay">
+          <div class="overlay-content">
+            <h3 class="overlay-title">More Movies...</h3>
+            <button class="overlay-add-btn">+ Add to Library</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Add interactivity to filter chips
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        // Toggle within same section
+        const section = chip.closest('.filter-section');
+        if (!chip.classList.contains('active')) {
+          section.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+        } else {
+          chip.classList.remove('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
