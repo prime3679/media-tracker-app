@@ -11,6 +11,7 @@ import authRouter from './auth.js';
 import importRouter from './import.js';
 import searchRouter from './search.js';
 import nextRouter from './next.js';
+import catalogRouter from './catalog.js';
 import { generateWeeklyDigest } from '../jobs/weeklyDigest.js';
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.use(authenticateToken);
 router.use('/import', importRouter);
 router.use('/search', searchRouter);
 router.use('/next', nextRouter);
+router.use('/catalog', catalogRouter);
 
 router.get('/media', async (req, res) => {
   try {
