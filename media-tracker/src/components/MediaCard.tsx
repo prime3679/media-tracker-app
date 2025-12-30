@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { type DiscoveryCatalogItem } from '../services/api';
 import './MediaCard.css';

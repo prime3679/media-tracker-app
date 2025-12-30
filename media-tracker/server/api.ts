@@ -16,7 +16,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
@@ -51,7 +51,7 @@ app.get('/api/media', async (req, res) => {
     const userId = req.user!.userId;
     const mediaItems = await storage.getUserMediaItems(userId);
     const tracking = await storage.getUserMediaTracking(userId);
-    
+
     // Combine media items with their tracking data
     const mediaWithTracking = mediaItems.map(item => {
       const trackingData = tracking.find(t => t.mediaItemId === item.id);
@@ -60,7 +60,7 @@ app.get('/api/media', async (req, res) => {
         tracking: trackingData || null
       };
     });
-    
+
     res.json(mediaWithTracking);
   } catch (error) {
     console.error('Error fetching media:', error);
@@ -73,7 +73,7 @@ app.post('/api/media', writeRateLimiter, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const validatedData = createMediaSchema.parse(req.body);
-    
+
     // Use transaction to ensure atomicity - implement DB calls directly
     const result = await db.transaction(async (tx) => {
       // Create media item using transaction
@@ -108,8 +108,8 @@ app.post('/api/media', writeRateLimiter, async (req, res) => {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
-        error: 'Invalid input data', 
-        details: error.issues 
+        error: 'Invalid input data',
+        details: error.issues
       });
     }
     console.error('Error creating media item:', error);
@@ -123,9 +123,9 @@ app.put('/api/media/:id/tracking', writeRateLimiter, async (req, res) => {
     const userId = req.user!.userId;
     const mediaItemId = parseInt(req.params.id);
     const validatedData = updateTrackingSchema.parse(req.body);
-    
+
     let tracking = await storage.getMediaTracking(userId, mediaItemId);
-    
+
     if (tracking) {
       // Update existing tracking
       const updates: Record<string, unknown> = {};
@@ -135,7 +135,7 @@ app.put('/api/media/:id/tracking', writeRateLimiter, async (req, res) => {
       }
       if (validatedData.notes !== undefined) updates.notes = validatedData.notes || null;
       if (validatedData.progress !== undefined) updates.progress = validatedData.progress;
-      
+
       // FIXED: Only update completedDate when status is explicitly provided
       if (validatedData.status !== undefined) {
         if (validatedData.status === 'completed' && tracking.status !== 'completed') {
@@ -144,7 +144,7 @@ app.put('/api/media/:id/tracking', writeRateLimiter, async (req, res) => {
           updates.completedDate = null;
         }
       }
-      
+
       tracking = await storage.updateMediaTracking(tracking.id, updates);
     } else {
       // Create new tracking entry
@@ -161,13 +161,13 @@ app.put('/api/media/:id/tracking', writeRateLimiter, async (req, res) => {
         completedDate: validatedData.status === 'completed' ? new Date() : null
       });
     }
-    
+
     return res.json(tracking);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        error: 'Invalid input data', 
-        details: error.issues 
+      return res.status(400).json({
+        error: 'Invalid input data',
+        details: error.issues
       });
     }
     console.error('Error updating tracking:', error);
@@ -181,7 +181,7 @@ app.get('/api/stats', async (req, res) => {
     const userId = req.user!.userId;
     const mediaItems = await storage.getUserMediaItems(userId);
     const tracking = await storage.getUserMediaTracking(userId);
-    
+
     const stats = {
       totalItems: mediaItems.length,
       completed: tracking.filter(t => t.status === 'completed').length,
@@ -193,7 +193,7 @@ app.get('/api/stats', async (req, res) => {
       tvShows: mediaItems.filter(item => item.mediaType === 'tv_show').length,
       books: mediaItems.filter(item => item.mediaType === 'book').length
     };
-    
+
     res.json(stats);
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -219,4 +219,7 @@ const startServer = async () => {
   });
 };
 
-startServer().catch(console.error);
+// Only start server if run directly
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  startServer().catch(console.error);
+}

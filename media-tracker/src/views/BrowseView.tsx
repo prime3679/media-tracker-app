@@ -1,8 +1,33 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { catalogApi, mediaQueryKey, type CatalogFilters, type DiscoveryCatalogItem } from '../services/api';
 import MediaCard from '../components/MediaCard';
 import './BrowseView.css';
+
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.05
+        }
+    }
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: 20 },
+    visible: {
+        opacity: 1,
+        scale: 1,
+        y: 0,
+        transition: {
+            type: "spring",
+            stiffness: 300,
+            damping: 24
+        }
+    }
+} as const;
 
 export default function BrowseView() {
     const [search, setSearch] = useState('');
@@ -173,18 +198,26 @@ export default function BrowseView() {
                     <p>Error loading catalog: {(error as Error).message}</p>
                 </div>
             ) : (
-                <div className="browse-grid">
-                    {data.pages.map((page) => (
-                        page.map((item) => (
-                            <MediaCard
-                                key={item.id}
-                                item={item}
-                                onAdd={handleAddToLibrary}
-                                isAdding={addingId === item.id}
-                            />
-                        ))
+                <motion.div
+                    className="browse-grid"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                >
+                    {data.pages.map((page, i) => (
+                        <React.Fragment key={i}>
+                            {page.map((item) => (
+                                <motion.div key={item.id} variants={itemVariants}>
+                                    <MediaCard
+                                        item={item}
+                                        onAdd={handleAddToLibrary}
+                                        isAdding={addingId === item.id}
+                                    />
+                                </motion.div>
+                            ))}
+                        </React.Fragment>
                     ))}
-                </div>
+                </motion.div>
             )}
 
             <div ref={loadMoreRef} className="browse-load-more">

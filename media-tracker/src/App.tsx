@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
 import {
   mediaApi,
@@ -705,524 +706,585 @@ function App() {
           onClick={() => setActiveTab('nextup')}
           aria-current={activeTab === 'nextup' ? 'page' : undefined}
         >
-          ✨ Next Up
+          Next Up
         </button>
         <button
           className={activeTab === 'library' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('library')}
           aria-current={activeTab === 'library' ? 'page' : undefined}
         >
-          📚 Library
+          Library
         </button>
         <button
           className={activeTab === 'search' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('search')}
           aria-current={activeTab === 'search' ? 'page' : undefined}
         >
-          🔎 Search
+          Search
         </button>
         <button
           className={activeTab === 'browse' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('browse')}
           aria-current={activeTab === 'browse' ? 'page' : undefined}
         >
-          🧭 Browse
+          Browse
         </button>
         <button
           className={activeTab === 'stats' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('stats')}
           aria-current={activeTab === 'stats' ? 'page' : undefined}
         >
-          📊 Stats
+          Stats
         </button>
       </nav>
 
-      {activeTab === 'nextup' && (
-        <NextUpView />
-      )}
+      <AnimatePresence mode="wait">
+        {activeTab === 'nextup' && (
+          <motion.div
+            key="nextup"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <NextUpView />
+          </motion.div>
+        )}
 
-      {activeTab === 'browse' && (
-        <BrowseView />
-      )}
+        {activeTab === 'browse' && (
+          <motion.div
+            key="browse"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <BrowseView />
+          </motion.div>
+        )}
 
-      {activeTab === 'library' && (
-        <main className="main">
-          <section className="quick-add-section" aria-labelledby={quickAddHeadingId}>
-            <div className="quick-add-card">
-              <div className="quick-add-header">
-                <h2 id={quickAddHeadingId}>⚡ Quick Add</h2>
-                <p>Search Devin&apos;s catalog and drop items straight into your list.</p>
-              </div>
-              <div className="quick-add-fields">
-                <div className="quick-add-field">
-                  <label htmlFor={quickAddTypeId}>Result type</label>
-                  <select
-                    id={quickAddTypeId}
-                    value={quickAddType}
-                    onChange={(e) => setQuickAddType(e.target.value as ImportSearchCategory)}
-                    disabled={quickAddMutation.isPending}
-                  >
-                    <option value="movie">🎬 Movies</option>
-                    <option value="tv">📺 TV Shows</option>
-                    <option value="book">📚 Books</option>
-                  </select>
-                </div>
-                <div className="quick-add-field quick-add-search">
-                  <label htmlFor={quickAddInputId}>Search titles</label>
-                  <input
-                    id={quickAddInputId}
-                    type="text"
-                    placeholder="Start typing a title..."
-                    value={quickAddQuery}
-                    onChange={(e) => setQuickAddQuery(e.target.value)}
-                    aria-describedby={quickAddHelperId}
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-              <p id={quickAddHelperId} className="quick-add-helper">
-                Suggestions update as you type. Choose a result to import it instantly.
-              </p>
-              <div className="quick-add-results-wrapper" aria-live="polite">
-                {quickAddMutation.isPending && (
-                  <p className="quick-add-status" role="status">
-                    Adding to your library…
-                  </p>
-                )}
-                {quickAddLoading ? (
-                  <p className="quick-add-status">Looking up suggestions…</p>
-                ) : quickAddOptions.length > 0 ? (
-                  <ul className="quick-add-results" role="listbox" aria-label="Quick add suggestions">
-                    {quickAddOptions.map((option) => (
-                      <li key={`${option.external_id}-${option.sourceCategory}`}>
-                        <button
-                          type="button"
-                          className="quick-add-option"
-                          onClick={() => handleQuickAddSelect(option)}
-                          disabled={quickAddMutation.isPending}
-                          aria-label={`Add ${option.title}${option.year ? ` (${option.year})` : ''} to your library`}
-                        >
-                          <span className="quick-add-option-title">{option.title}</span>
-                          <span className="quick-add-option-meta">
-                            {option.year ? `${option.year} • ` : ''}
-                            {option.sourceCategory === 'tv'
-                              ? 'TV show'
-                              : option.sourceCategory === 'movie'
-                                ? 'Movie'
-                                : 'Book'}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : quickAddQuery.trim().length >= QUICK_ADD_MIN_QUERY_LENGTH ? (
-                  <p className="quick-add-status">No matches yet—try a different spelling.</p>
-                ) : (
-                  <p className="quick-add-status">
-                    Type at least {QUICK_ADD_MIN_QUERY_LENGTH} letters to see suggestions.
-                  </p>
-                )}
-                {quickAddError && (
-                  <p className="quick-add-error" role="alert">
-                    {quickAddError}
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
-
-          <div className="add-section">
-            <button className="add-button" onClick={() => setShowAddForm(!showAddForm)}>
-              {showAddForm ? '✕ Cancel' : '+ Add Media'}
-            </button>
-          </div>
-
-          {showAddForm && (
-            <form className="add-form" onSubmit={handleSubmit}>
-              <input
-                type="text"
-                placeholder="Title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-              />
-
-              <select
-                value={formData.mediaType}
-                onChange={(e) =>
-                  setFormData({ ...formData, mediaType: e.target.value as MediaItem['mediaType'] })
-                }
-              >
-                <option value="movie">🎬 Movie</option>
-                <option value="tv_show">📺 TV Show</option>
-                <option value="book">📚 Book</option>
-              </select>
-
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value as MediaTracking['status'] })
-                }
-              >
-                <option value="to_watch">To Watch/Read</option>
-                <option value="watching">Currently Watching/Reading</option>
-                <option value="completed">Completed</option>
-                <option value="on_hold">On Hold</option>
-                <option value="dropped">Dropped</option>
-              </select>
-
-              <input
-                type="number"
-                placeholder="Rating (1-10)"
-                value={formData.rating}
-                onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
-                min="1"
-                max="10"
-                step="0.1"
-              />
-
-              <textarea
-                placeholder="Notes (optional)"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-              />
-
-              <button type="submit" className="submit-button" disabled={createMediaMutation.isPending}>
-                {createMediaMutation.isPending ? 'Adding...' : 'Add to Library'}
-              </button>
-            </form>
-          )}
-
-          <section className="next-up-section" aria-labelledby={nextUpHeadingId}>
-            <div className="next-up-card">
-              <div className="next-up-header">
-                <h2 id={nextUpHeadingId}>🎯 Next up</h2>
-                {nextUpQuery.isFetching && (
-                  <span className="next-up-refresh" role="status">
-                    Refreshing…
-                  </span>
-                )}
-              </div>
-              {nextUpQuery.error ? (
-                <p className="next-up-status">We couldn&apos;t load recommendations right now.</p>
-              ) : nextUpQuery.isLoading ? (
-                <p className="next-up-status">Finding your next picks…</p>
-              ) : nextUpQuery.data && nextUpQuery.data.length > 0 ? (
-                <ol className="next-up-list">
-                  {nextUpQuery.data.map((item) => (
-                    <li key={item.id} className="next-up-item">
-                      <div className="next-up-item-row">
-                        <span className="next-up-icon" aria-hidden="true">
-                          {getMediaIcon(item.mediaType)}
-                        </span>
-                        <div className="next-up-text">
-                          <span className="next-up-title">{item.title}</span>
-                          <span className="next-up-status-label">{formatStatus(item.tracking?.status)}</span>
-                        </div>
-                      </div>
-                      <p className="next-up-hint">{describeNextUp(item)}</p>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <div className="next-up-empty">
-                  <p>You&apos;re all caught up! Update progress to see fresh picks.</p>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="search-section" aria-labelledby={librarySearchHeadingId}>
-            <div className="search-section-header">
-              <h2 id={librarySearchHeadingId}>Filter your library</h2>
-            </div>
-            <label className="field-label" htmlFor={librarySearchInputId}>
-              Search by title, author, or director
-            </label>
-            <input
-              id={librarySearchInputId}
-              type="text"
-              className="search-input"
-              placeholder="🔍 Search by title, author, or director..."
-              value={librarySearchQuery}
-              onChange={(e) => setLibrarySearchQuery(e.target.value)}
-            />
-
-            <div className="filter-row">
-              <div className="filter-field">
-                <label htmlFor={statusFilterId}>Status filter</label>
-                <select
-                  id={statusFilterId}
-                  className="filter-select"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
-                >
-                  <option value="all">All status</option>
-                  <option value="to_watch">To watch/read</option>
-                  <option value="watching">Currently watching/reading</option>
-                  <option value="completed">Completed</option>
-                  <option value="on_hold">On hold</option>
-                  <option value="dropped">Dropped</option>
-                </select>
-              </div>
-
-              <div className="filter-field">
-                <label htmlFor={typeFilterId}>Type filter</label>
-                <select
-                  id={typeFilterId}
-                  className="filter-select"
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value as TypeFilter)}
-                >
-                  <option value="all">All types</option>
-                  <option value="movie">🎬 Movies</option>
-                  <option value="tv_show">📺 TV Shows</option>
-                  <option value="book">📚 Books</option>
-                </select>
-              </div>
-            </div>
-          </section>
-
-          <div className="media-list">
-            {filteredMediaItems.length === 0 ? (
-              mediaQuery.data && mediaQuery.data.length === 0 ? (
-                <div className="empty-state">
-                  <p>📚 Your media library is empty</p>
-                  <p>Add some movies, TV shows, or books to get started!</p>
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <p>🔍 No matches found</p>
-                  <p>Try adjusting your search or filters</p>
-                </div>
-              )
-            ) : (
-              filteredMediaItems.map((item) => (
-                <div key={item.id} className="media-item">
-                  <div className="media-header">
-                    <span className="media-icon">{getMediaIcon(item.mediaType)}</span>
-                    <h3>{item.title}</h3>
+        {activeTab === 'library' && (
+          <motion.div
+            key="library"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <main className="main">
+              <section className="quick-add-section" aria-labelledby={quickAddHeadingId}>
+                <div className="quick-add-card">
+                  <div className="quick-add-header">
+                    <h2 id={quickAddHeadingId}>⚡ Quick Add</h2>
+                    <p>Search Devin&apos;s catalog and drop items straight into your list.</p>
                   </div>
-
-                  <div className="media-details">
-                    <span className="status-badge" style={{ backgroundColor: getStatusColor(item.tracking?.status) }}>
-                      {formatStatus(item.tracking?.status)}
-                    </span>
-                    {item.tracking?.rating && (
-                      <span className="rating">⭐ {item.tracking.rating}/10</span>
+                  <div className="quick-add-fields">
+                    <div className="quick-add-field">
+                      <label htmlFor={quickAddTypeId}>Result type</label>
+                      <select
+                        id={quickAddTypeId}
+                        value={quickAddType}
+                        onChange={(e) => setQuickAddType(e.target.value as ImportSearchCategory)}
+                        disabled={quickAddMutation.isPending}
+                      >
+                        <option value="movie">🎬 Movies</option>
+                        <option value="tv">📺 TV Shows</option>
+                        <option value="book">📚 Books</option>
+                      </select>
+                    </div>
+                    <div className="quick-add-field quick-add-search">
+                      <label htmlFor={quickAddInputId}>Search titles</label>
+                      <input
+                        id={quickAddInputId}
+                        type="text"
+                        placeholder="Start typing a title..."
+                        value={quickAddQuery}
+                        onChange={(e) => setQuickAddQuery(e.target.value)}
+                        aria-describedby={quickAddHelperId}
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                  <p id={quickAddHelperId} className="quick-add-helper">
+                    Suggestions update as you type. Choose a result to import it instantly.
+                  </p>
+                  <div className="quick-add-results-wrapper" aria-live="polite">
+                    {quickAddMutation.isPending && (
+                      <p className="quick-add-status" role="status">
+                        Adding to your library…
+                      </p>
+                    )}
+                    {quickAddLoading ? (
+                      <p className="quick-add-status">Looking up suggestions…</p>
+                    ) : quickAddOptions.length > 0 ? (
+                      <ul className="quick-add-results" role="listbox" aria-label="Quick add suggestions">
+                        {quickAddOptions.map((option) => (
+                          <li key={`${option.external_id}-${option.sourceCategory}`}>
+                            <button
+                              type="button"
+                              className="quick-add-option"
+                              onClick={() => handleQuickAddSelect(option)}
+                              disabled={quickAddMutation.isPending}
+                              aria-label={`Add ${option.title}${option.year ? ` (${option.year})` : ''} to your library`}
+                            >
+                              <span className="quick-add-option-title">{option.title}</span>
+                              <span className="quick-add-option-meta">
+                                {option.year ? `${option.year} • ` : ''}
+                                {option.sourceCategory === 'tv'
+                                  ? 'TV show'
+                                  : option.sourceCategory === 'movie'
+                                    ? 'Movie'
+                                    : 'Book'}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : quickAddQuery.trim().length >= QUICK_ADD_MIN_QUERY_LENGTH ? (
+                      <p className="quick-add-status">No matches yet—try a different spelling.</p>
+                    ) : (
+                      <p className="quick-add-status">
+                        Type at least {QUICK_ADD_MIN_QUERY_LENGTH} letters to see suggestions.
+                      </p>
+                    )}
+                    {quickAddError && (
+                      <p className="quick-add-error" role="alert">
+                        {quickAddError}
+                      </p>
                     )}
                   </div>
+                </div>
+              </section>
 
-                  {item.tracking?.notes && <p className="notes">{item.tracking.notes}</p>}
+              <div className="add-section">
+                <button className="add-button" onClick={() => setShowAddForm(!showAddForm)}>
+                  {showAddForm ? '✕ Cancel' : '+ Add Media'}
+                </button>
+              </div>
 
-                  {item.mediaType === 'tv_show' && (
-                    <TvEpisodeControls
-                      item={item}
-                      isUpdating={updateTrackingMutation.isPending}
-                      onEpisodeSelect={(episode) => handleEpisodeProgressUpdate(item, episode)}
-                      onMarkNextEpisode={(episode) => handleMarkNextEpisode(item, episode)}
-                    />
+              {showAddForm && (
+                <form className="add-form" onSubmit={handleSubmit}>
+                  <input
+                    type="text"
+                    placeholder="Title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                  />
+
+                  <select
+                    value={formData.mediaType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, mediaType: e.target.value as MediaItem['mediaType'] })
+                    }
+                  >
+                    <option value="movie">🎬 Movie</option>
+                    <option value="tv_show">📺 TV Show</option>
+                    <option value="book">📚 Book</option>
+                  </select>
+
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value as MediaTracking['status'] })
+                    }
+                  >
+                    <option value="to_watch">To Watch/Read</option>
+                    <option value="watching">Currently Watching/Reading</option>
+                    <option value="completed">Completed</option>
+                    <option value="on_hold">On Hold</option>
+                    <option value="dropped">Dropped</option>
+                  </select>
+
+                  <input
+                    type="number"
+                    placeholder="Rating (1-10)"
+                    value={formData.rating}
+                    onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
+                    min="1"
+                    max="10"
+                    step="0.1"
+                  />
+
+                  <textarea
+                    placeholder="Notes (optional)"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows={3}
+                  />
+
+                  <button type="submit" className="submit-button" disabled={createMediaMutation.isPending}>
+                    {createMediaMutation.isPending ? 'Adding...' : 'Add to Library'}
+                  </button>
+                </form>
+              )}
+
+              <section className="next-up-section" aria-labelledby={nextUpHeadingId}>
+                <div className="next-up-card">
+                  <div className="next-up-header">
+                    <h2 id={nextUpHeadingId}>🎯 Next up</h2>
+                    {nextUpQuery.isFetching && (
+                      <span className="next-up-refresh" role="status">
+                        Refreshing…
+                      </span>
+                    )}
+                  </div>
+                  {nextUpQuery.error ? (
+                    <p className="next-up-status">We couldn&apos;t load recommendations right now.</p>
+                  ) : nextUpQuery.isLoading ? (
+                    <p className="next-up-status">Finding your next picks…</p>
+                  ) : nextUpQuery.data && nextUpQuery.data.length > 0 ? (
+                    <ol className="next-up-list">
+                      {nextUpQuery.data.map((item) => (
+                        <li key={item.id} className="next-up-item">
+                          <div className="next-up-item-row">
+                            <span className="next-up-icon" aria-hidden="true">
+                              {getMediaIcon(item.mediaType)}
+                            </span>
+                            <div className="next-up-text">
+                              <span className="next-up-title">{item.title}</span>
+                              <span className="next-up-status-label">{formatStatus(item.tracking?.status)}</span>
+                            </div>
+                          </div>
+                          <p className="next-up-hint">{describeNextUp(item)}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <div className="next-up-empty">
+                      <p>You&apos;re all caught up! Update progress to see fresh picks.</p>
+                    </div>
                   )}
+                </div>
+              </section>
 
-                  <div className="item-actions">
+              <section className="search-section" aria-labelledby={librarySearchHeadingId}>
+                <div className="search-section-header">
+                  <h2 id={librarySearchHeadingId}>Filter your library</h2>
+                </div>
+                <label className="field-label" htmlFor={librarySearchInputId}>
+                  Search by title, author, or director
+                </label>
+                <input
+                  id={librarySearchInputId}
+                  type="text"
+                  className="search-input"
+                  placeholder="🔍 Search by title, author, or director..."
+                  value={librarySearchQuery}
+                  onChange={(e) => setLibrarySearchQuery(e.target.value)}
+                />
+
+                <div className="filter-row">
+                  <div className="filter-field">
+                    <label htmlFor={statusFilterId}>Status filter</label>
                     <select
-                      value={item.tracking?.status ?? 'to_watch'}
-                      onChange={(e) => handleStatusChange(item, e.target.value as MediaTracking['status'])}
-                      className="status-select"
-                      disabled={updateTrackingMutation.isPending}
+                      id={statusFilterId}
+                      className="filter-select"
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
                     >
-                      <option value="to_watch">To Watch/Read</option>
-                      <option value="watching">Currently Watching/Reading</option>
+                      <option value="all">All status</option>
+                      <option value="to_watch">To watch/read</option>
+                      <option value="watching">Currently watching/reading</option>
                       <option value="completed">Completed</option>
-                      <option value="on_hold">On Hold</option>
+                      <option value="on_hold">On hold</option>
                       <option value="dropped">Dropped</option>
                     </select>
-
-                    <input
-                      type="number"
-                      placeholder="Rate 1-10"
-                      value={item.tracking?.rating ?? ''}
-                      onChange={(e) => handleRatingChange(item, e.target.value)}
-                      min="1"
-                      max="10"
-                      step="0.1"
-                      className="rating-input"
-                    />
                   </div>
 
-                  <small className="date">Added: {new Date(item.createdAt).toLocaleDateString()}</small>
+                  <div className="filter-field">
+                    <label htmlFor={typeFilterId}>Type filter</label>
+                    <select
+                      id={typeFilterId}
+                      className="filter-select"
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value as TypeFilter)}
+                    >
+                      <option value="all">All types</option>
+                      <option value="movie">🎬 Movies</option>
+                      <option value="tv_show">📺 TV Shows</option>
+                      <option value="book">📚 Books</option>
+                    </select>
+                  </div>
                 </div>
-              ))
-            )}
-          </div>
-        </main>
-      )}
+              </section>
 
-      {activeTab === 'search' && (
-        <main className="main">
-          <section className="search-screen" aria-labelledby={searchScreenHeadingId}>
-            <h2 id={searchScreenHeadingId}>Search your library</h2>
-            <p id={searchScreenHelperId} className="search-screen-helper">
-              Results are ranked so the best matches appear first—even if your spelling is a little off.
-            </p>
-            <label className="field-label" htmlFor={globalSearchInputId}>
-              Search query
-            </label>
-            <input
-              id={globalSearchInputId}
-              type="search"
-              className="search-input"
-              placeholder={'Try "Stranger Things" or "Dune"'}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-describedby={searchScreenHelperId}
-              autoComplete="off"
-            />
+              <motion.div
+                className="media-list"
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.05
+                    }
+                  }
+                }}
+                initial="hidden"
+                animate="show"
+              >
+                {filteredMediaItems.length === 0 ? (
+                  mediaQuery.data && mediaQuery.data.length === 0 ? (
+                    <div className="empty-state">
+                      <p>📚 Your media library is empty</p>
+                      <p>Add some movies, TV shows, or books to get started!</p>
+                    </div>
+                  ) : (
+                    <div className="empty-state">
+                      <p>🔍 No matches found</p>
+                      <p>Try adjusting your search or filters</p>
+                    </div>
+                  )
+                ) : (
+                  filteredMediaItems.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      className="media-item"
+                      variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        show: { opacity: 1, y: 0 }
+                      }}
+                      layout
+                    >
+                      <div className="media-header">
+                        <span className="media-icon">{getMediaIcon(item.mediaType)}</span>
+                        <h3>{item.title}</h3>
+                      </div>
 
-            <div className="search-screen-status" aria-live="polite">
-              {trimmedSearchTerm.length === 0 ? (
-                <p>Start typing to search across your saved items.</p>
-              ) : searchResultsQuery.isLoading ? (
-                <p>Searching your library…</p>
-              ) : searchResultsQuery.error ? (
-                <p>We couldn&apos;t run that search. Please try again.</p>
-              ) : searchResultsQuery.data && searchResultsQuery.data.length > 0 ? (
-                <>
-                  <p className="search-result-count">
-                    Showing {searchResultsQuery.data.length}{' '}
-                    {searchResultsQuery.data.length === 1 ? 'result' : 'results'} for “{trimmedSearchTerm}”.
-                  </p>
-                  {searchResultsQuery.isFetching && !searchResultsQuery.isLoading && (
-                    <p className="search-result-refresh" role="status">
-                      Refreshing results…
+                      <div className="media-details">
+                        <span className="status-badge" style={{ backgroundColor: getStatusColor(item.tracking?.status) }}>
+                          {formatStatus(item.tracking?.status)}
+                        </span>
+                        {item.tracking?.rating && (
+                          <span className="rating">⭐ {item.tracking.rating}/10</span>
+                        )}
+                      </div>
+
+                      {item.tracking?.notes && <p className="notes">{item.tracking.notes}</p>}
+
+                      {item.mediaType === 'tv_show' && (
+                        <TvEpisodeControls
+                          item={item}
+                          isUpdating={updateTrackingMutation.isPending}
+                          onEpisodeSelect={(episode) => handleEpisodeProgressUpdate(item, episode)}
+                          onMarkNextEpisode={(episode) => handleMarkNextEpisode(item, episode)}
+                        />
+                      )}
+
+                      <div className="item-actions">
+                        <select
+                          value={item.tracking?.status ?? 'to_watch'}
+                          onChange={(e) => handleStatusChange(item, e.target.value as MediaTracking['status'])}
+                          className="status-select"
+                          disabled={updateTrackingMutation.isPending}
+                        >
+                          <option value="to_watch">To Watch/Read</option>
+                          <option value="watching">Currently Watching/Reading</option>
+                          <option value="completed">Completed</option>
+                          <option value="on_hold">On Hold</option>
+                          <option value="dropped">Dropped</option>
+                        </select>
+
+                        <input
+                          type="number"
+                          placeholder="Rate 1-10"
+                          value={item.tracking?.rating ?? ''}
+                          onChange={(e) => handleRatingChange(item, e.target.value)}
+                          min="1"
+                          max="10"
+                          step="0.1"
+                          className="rating-input"
+                        />
+                      </div>
+
+                      <small className="date">Added: {new Date(item.createdAt).toLocaleDateString()}</small>
+                    </motion.div>
+                  ))
+                )}
+              </motion.div>
+            </main>
+          </motion.div>
+        )}
+
+        {activeTab === 'search' && (
+          <motion.div
+            key="search"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <main className="main">
+              <section className="search-screen" aria-labelledby={searchScreenHeadingId}>
+                <h2 id={searchScreenHeadingId}>Search your library</h2>
+                <p id={searchScreenHelperId} className="search-screen-helper">
+                  Results are ranked so the best matches appear first—even if your spelling is a little off.
+                </p>
+                <label className="field-label" htmlFor={globalSearchInputId}>
+                  Search query
+                </label>
+                <input
+                  id={globalSearchInputId}
+                  type="search"
+                  className="search-input"
+                  placeholder={'Try "Stranger Things" or "Dune"'}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-describedby={searchScreenHelperId}
+                  autoComplete="off"
+                />
+
+                <div className="search-screen-status" aria-live="polite">
+                  {trimmedSearchTerm.length === 0 ? (
+                    <p>Start typing to search across your saved items.</p>
+                  ) : searchResultsQuery.isLoading ? (
+                    <p>Searching your library…</p>
+                  ) : searchResultsQuery.error ? (
+                    <p>We couldn&apos;t run that search. Please try again.</p>
+                  ) : searchResultsQuery.data && searchResultsQuery.data.length > 0 ? (
+                    <>
+                      <p className="search-result-count">
+                        Showing {searchResultsQuery.data.length}{' '}
+                        {searchResultsQuery.data.length === 1 ? 'result' : 'results'} for “{trimmedSearchTerm}”.
+                      </p>
+                      {searchResultsQuery.isFetching && !searchResultsQuery.isLoading && (
+                        <p className="search-result-refresh" role="status">
+                          Refreshing results…
+                        </p>
+                      )}
+                      <ul className="search-results">
+                        {searchResultsQuery.data.map((item) => (
+                          <li key={item.id} className="search-result-item">
+                            <div className="search-result-row">
+                              <span className="search-result-icon" aria-hidden="true">
+                                {getMediaIcon(item.mediaType)}
+                              </span>
+                              <div className="search-result-text">
+                                <span className="search-result-title">{item.title}</span>
+                                <span className="search-result-meta">{formatStatus(item.tracking?.status)}</span>
+                              </div>
+                            </div>
+                            {item.tracking?.notes && <p className="search-result-notes">{item.tracking.notes}</p>}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p>
+                      No saved items match “{trimmedSearchTerm}”. Try another spelling or add it from Quick Add.
                     </p>
                   )}
-                  <ul className="search-results">
-                    {searchResultsQuery.data.map((item) => (
-                      <li key={item.id} className="search-result-item">
-                        <div className="search-result-row">
-                          <span className="search-result-icon" aria-hidden="true">
-                            {getMediaIcon(item.mediaType)}
-                          </span>
-                          <div className="search-result-text">
-                            <span className="search-result-title">{item.title}</span>
-                            <span className="search-result-meta">{formatStatus(item.tracking?.status)}</span>
-                          </div>
-                        </div>
-                        {item.tracking?.notes && <p className="search-result-notes">{item.tracking.notes}</p>}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p>
-                  No saved items match “{trimmedSearchTerm}”. Try another spelling or add it from Quick Add.
-                </p>
-              )}
-            </div>
-          </section>
-        </main>
-      )}
-
-      {activeTab === 'stats' && (
-        <main className="main">
-          <div className="stats">
-            <h2>📊 Your Stats</h2>
-            {statsQuery.data ? (
-              <>
-                <div className="stats-cards">
-                  <section className="stat-card total-card" aria-label="Total items and breakdown">
-                    <div className="stat-card-header">
-                      <h3>Total tracked</h3>
-                      <p className="stat-value">{statsQuery.data.totalItems}</p>
-                    </div>
-                    <div className="stat-breakdown">
-                      <dl>
-                        <dt>Completed</dt>
-                        <dd>{statsQuery.data.completed}</dd>
-                        <dt>Watching</dt>
-                        <dd>{statsQuery.data.watching}</dd>
-                        <dt>To watch</dt>
-                        <dd>{statsQuery.data.toWatch}</dd>
-                      </dl>
-                      <dl>
-                        <dt>On hold</dt>
-                        <dd>{statsQuery.data.onHold}</dd>
-                        <dt>Dropped</dt>
-                        <dd>{statsQuery.data.dropped}</dd>
-                        <dt>Movies / TV / Books</dt>
-                        <dd>
-                          {statsQuery.data.movies} / {statsQuery.data.tvShows} / {statsQuery.data.books}
-                        </dd>
-                      </dl>
-                    </div>
-                  </section>
-
-                  <section className="stat-card streak-card" aria-label="Streak">
-                    <h3>🔥 Streak</h3>
-                    <p className="stat-value">{statsQuery.data.streakDays}</p>
-                    <p className="stat-caption">days in a row</p>
-                  </section>
-
-                  <section className="stat-card velocity-card" aria-label="Completion velocity">
-                    <h3>⚡ Velocity</h3>
-                    <p className="stat-value">{statsQuery.data.completionVelocity}</p>
-                    <p className="stat-caption">completions this week</p>
-                    {velocityValues.length > 0 ? (
-                      <svg
-                        className="velocity-sparkline"
-                        viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
-                        role="img"
-                        aria-label="Completion velocity over recent weeks"
-                      >
-                        <polyline
-                          points={`0 ${SPARKLINE_HEIGHT} ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
-                          fill="none"
-                          stroke="none"
-                        />
-                        <path d={velocityPath} fill="none" stroke="currentColor" strokeWidth="2" />
-                      </svg>
-                    ) : snapshotsQuery.isLoading ? (
-                      <p className="stat-caption">Loading history…</p>
-                    ) : snapshotsQuery.error ? (
-                      <p className="stat-caption">Unable to load history.</p>
-                    ) : (
-                      <p className="stat-caption">No history yet</p>
-                    )}
-                  </section>
                 </div>
+              </section>
+            </main>
+          </motion.div>
+        )}
 
-                <section className="stats-movement" aria-live="polite">
-                  <h3>What moved this week</h3>
-                  {weeklyActivity.length > 0 ? (
-                    <ul className="movement-list">
-                      {weeklyActivity.map((item) => {
-                        const updatedAt = item.tracking?.updatedAt ?? item.updatedAt;
-                        return (
+        {activeTab === 'stats' && (
+          <motion.div
+            key="stats"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <main className="main stats">
+              <h2>Your Progress</h2>
+
+              {statsQuery.data ? (
+                <>
+                  <div className="stats-cards">
+                    <div className="stat-card total-card">
+                      <div className="stat-card-header">
+                        <h3>Total items</h3>
+                        <span className="stat-icon">📚</span>
+                      </div>
+                      <div className="stat-value">
+                        {(statsQuery.data.movies || 0) + (statsQuery.data.tvShows || 0) + (statsQuery.data.books || 0)}
+                      </div>
+                      <div className="stat-breakdown">
+                        <dl>
+                          <dt>Movies</dt>
+                          <dd>{statsQuery.data.movies}</dd>
+                          <dt>TV Shows</dt>
+                          <dd>{statsQuery.data.tvShows}</dd>
+                          <dt>Books</dt>
+                          <dd>{statsQuery.data.books}</dd>
+                        </dl>
+                      </div>
+                    </div>
+
+                    <div className="stat-card completed-card">
+                      <div className="stat-card-header">
+                        <h3>Completed</h3>
+                        <span className="stat-icon">✅</span>
+                      </div>
+                      <div className="stat-value">{statsQuery.data.completed}</div>
+                      <div className="stat-breakdown">
+                        <dl>
+                          <dt>Watching</dt>
+                          <dd>{statsQuery.data.watching}</dd>
+                          <dt>To watch</dt>
+                          <dd>{statsQuery.data.toWatch}</dd>
+                        </dl>
+                      </div>
+                    </div>
+
+                    <div className="stat-card velocity-card">
+                      <div className="stat-card-header">
+                        <h3>Velocity</h3>
+                        <span className="stat-icon">⚡</span>
+                      </div>
+                      <div className="stat-value">{statsQuery.data.completionVelocity}</div>
+                      <p className="stat-caption">items / week</p>
+
+                      {velocityValues.length > 0 && (
+                        <svg className="velocity-sparkline" viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}>
+                          <path
+                            d={velocityPath}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="stats-movement">
+                    <h3>Recent Activity</h3>
+                    {weeklyActivity.length === 0 ? (
+                      <p className="stats-empty">No activity in the last 7 days.</p>
+                    ) : (
+                      <ul className="movement-list">
+                        {weeklyActivity.map((item) => (
                           <li key={item.id} className="movement-item">
                             <div className="movement-primary">
                               <span className="movement-title">{item.title}</span>
-                              <span className="movement-status">{formatStatus(item.tracking?.status)}</span>
+                              <span className="movement-status">
+                                {formatStatus(item.tracking?.status)}
+                              </span>
                             </div>
-                            <span className="movement-meta">{formatRelativeTime(updatedAt)}</span>
+                            <span className="movement-meta">
+                              {formatRelativeTime(item.tracking?.updatedAt ?? item.updatedAt)}
+                            </span>
                           </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="stats-empty">No activity yet. Update a status to see recent moves.</p>
-                  )}
-                </section>
-              </>
-            ) : (
-              <div className="loading">
-                <p>Loading your statistics...</p>
-              </div>
-            )}
-          </div>
-        </main>
-      )}
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="loading">
+                  <p>Loading your statistics...</p>
+                </div>
+              )}
+            </main>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

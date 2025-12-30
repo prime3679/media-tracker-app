@@ -43,7 +43,7 @@ export default defineConfig({
           },
           {
             src: '/pwa-512x512.png',
-            sizes: '512x512', 
+            sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
           }
@@ -54,7 +54,6 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@tanstack/react-query': '/src/lib/tanstack-react-query.tsx',
     },
   },
   server: {
