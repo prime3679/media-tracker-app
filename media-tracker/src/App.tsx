@@ -720,35 +720,40 @@ function App() {
           onClick={() => setActiveTab('nextup')}
           aria-current={activeTab === 'nextup' ? 'page' : undefined}
         >
-          Next Up
+          <span className="tab-icon">✨</span>
+          <span className="tab-label">Next Up</span>
         </button>
         <button
           className={activeTab === 'library' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('library')}
           aria-current={activeTab === 'library' ? 'page' : undefined}
         >
-          Library
+          <span className="tab-icon">📚</span>
+          <span className="tab-label">Library</span>
         </button>
         <button
           className={activeTab === 'search' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('search')}
           aria-current={activeTab === 'search' ? 'page' : undefined}
         >
-          Search
+          <span className="tab-icon">🔎</span>
+          <span className="tab-label">Search</span>
         </button>
         <button
           className={activeTab === 'browse' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('browse')}
           aria-current={activeTab === 'browse' ? 'page' : undefined}
         >
-          Browse
+          <span className="tab-icon">🧭</span>
+          <span className="tab-label">Browse</span>
         </button>
         <button
           className={activeTab === 'stats' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('stats')}
           aria-current={activeTab === 'stats' ? 'page' : undefined}
         >
-          Stats
+          <span className="tab-icon">📊</span>
+          <span className="tab-label">Stats</span>
         </button>
       </nav>
 
@@ -1299,6 +1304,18 @@ function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      <button
+        className="mobile-fab"
+        onClick={() => {
+          setActiveTab('library');
+          // Focus quick add separately or just go there
+          const input = document.getElementById(quickAddInputId);
+          if (input) input.focus();
+        }}
+        aria-label="Quick Add Media"
+      >
+        +
+      </button>
     </div>
   );
 }
