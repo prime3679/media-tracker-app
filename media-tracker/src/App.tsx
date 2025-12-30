@@ -34,8 +34,9 @@ import {
   formatRelativeTime,
 } from './utils/stats';
 import NextUpView from './views/NextUpView';
+import BrowseView from './views/BrowseView';
 
-type Tab = 'nextup' | 'library' | 'stats' | 'search';
+type Tab = 'nextup' | 'library' | 'stats' | 'browse' | 'search';
 type StatusFilter = 'all' | MediaTracking['status'];
 type TypeFilter = 'all' | MediaItem['mediaType'];
 
@@ -463,9 +464,9 @@ function App() {
         items.map((item) =>
           item.id === variables.mediaId
             ? {
-                ...item,
-                tracking,
-              }
+              ...item,
+              tracking,
+            }
             : item,
         ),
       );
@@ -531,8 +532,8 @@ function App() {
   const velocityValues = useMemo(() => {
     const snapshots = snapshotsQuery.data
       ? [...snapshotsQuery.data].sort(
-          (a, b) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime(),
-        )
+        (a, b) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime(),
+      )
       : [];
 
     const values = snapshots.map((snapshot) => snapshot.completionsThisWeek);
@@ -721,6 +722,13 @@ function App() {
           🔎 Search
         </button>
         <button
+          className={activeTab === 'browse' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('browse')}
+          aria-current={activeTab === 'browse' ? 'page' : undefined}
+        >
+          🧭 Browse
+        </button>
+        <button
           className={activeTab === 'stats' ? 'tab active' : 'tab'}
           onClick={() => setActiveTab('stats')}
           aria-current={activeTab === 'stats' ? 'page' : undefined}
@@ -731,6 +739,10 @@ function App() {
 
       {activeTab === 'nextup' && (
         <NextUpView />
+      )}
+
+      {activeTab === 'browse' && (
+        <BrowseView />
       )}
 
       {activeTab === 'library' && (
@@ -796,8 +808,8 @@ function App() {
                             {option.sourceCategory === 'tv'
                               ? 'TV show'
                               : option.sourceCategory === 'movie'
-                              ? 'Movie'
-                              : 'Book'}
+                                ? 'Movie'
+                                : 'Book'}
                           </span>
                         </button>
                       </li>

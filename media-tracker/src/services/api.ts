@@ -217,15 +217,15 @@ async function apiCall<TResponse, TBody = unknown>(
   parser: z.ZodType<TResponse>,
 ): Promise<TResponse> {
   const { endpoint, method = 'GET', body, signal } = options;
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
+
   if (method === 'POST' || method === 'PUT') {
     headers['Idempotency-Key'] = crypto.randomUUID();
   }
-  
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method,
     headers,
@@ -421,7 +421,9 @@ const catalogItemSchema = z.object({
 
 const catalogListSchema = z.array(catalogItemSchema);
 
-export type CatalogItem = z.infer<typeof catalogItemSchema>;
+export type DiscoveryCatalogItem = z.infer<typeof catalogItemSchema>;
+// Alias for backward compatibility if needed, though DiscoveryCatalogItem is preferred
+export type CatalogItem = DiscoveryCatalogItem;
 
 export interface CatalogFilters {
   mediaType?: 'movie' | 'tv_show' | 'book';
@@ -470,18 +472,22 @@ export const catalogApi = {
   getItem: (id: number, signal?: AbortSignal) =>
     apiCall({ endpoint: `/catalog/${id}`, signal }, catalogItemSchema),
 
-  addToLibrary: (catalogItemId: number, status: 'to_watch' | 'watching' | 'completed' | 'dropped' | 'on_hold' = 'to_watch') =>
+  addToLibrary: (input: { catalogItemId: number; status?: 'to_watch' | 'watching' | 'completed' | 'dropped' | 'on_hold' }) =>
     apiCall(
       {
         endpoint: '/catalog/add-to-library',
         method: 'POST',
-        body: { catalogItemId, status },
+        body: { catalogItemId: input.catalogItemId, status: input.status ?? 'to_watch' },
       },
       addToLibraryResponseSchema,
     ),
 
   getGenres: (signal?: AbortSignal) =>
-    apiCall({ endpoint: '/catalog/metadata/genres', signal }, z.array(z.string())),
+    apiCall({ endpoint: '/catalog/metadata/genres', signal }, z.array(z.object({
+      name: z.string(),
+      slug: z.string(),
+      color: z.string(),
+    }))),
 
   getDecades: (signal?: AbortSignal) =>
     apiCall({ endpoint: '/catalog/metadata/decades', signal }, z.array(z.number())),
