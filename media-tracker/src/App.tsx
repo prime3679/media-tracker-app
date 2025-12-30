@@ -669,7 +669,21 @@ function App() {
           <h1>📱 Media Tracker</h1>
         </header>
         <div className="loading">
-          <p>Loading your media library...</p>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              style={{ fontSize: '3rem' }}
+            >
+              ✨
+            </motion.div>
+            <p style={{ color: 'var(--accent-secondary)' }}>Summoning your library...</p>
+          </motion.div>
         </div>
       </div>
     );
