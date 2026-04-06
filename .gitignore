@@ -9,3 +9,6 @@ build/
 # Env
 .env
 .env.local
+
+# Media Tracker dev artifacts
+media-tracker/dev-dist/
