@@ -1,12 +1,46 @@
-# React + Vite
+# Media Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Full-stack media tracking app with a React + Vite frontend and an Express API.
 
-Currently, two official plugins are available:
+## Stack
+- React 19 + Vite + TypeScript
+- Express API (`server/api.ts`)
+- PostgreSQL via Drizzle ORM (uses `DATABASE_URL`)
+- Vitest + Playwright for testing
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Development
+Install dependencies and start both API + client:
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Client-only or API-only:
+
+```bash
+npm run dev:client
+npm run dev:api
+```
+
+## Database
+Drizzle migration and seed helpers:
+
+```bash
+npm run db:migrate
+npm run seed:genres
+npm run seed:catalog
+```
+
+See `../MIGRATION_STEPS.md` for detailed migration steps.
+
+## Tests
+
+```bash
+npm run test
+npm run lint
+npm run typecheck
+```
+
+## Quick Add Prototype
+Design notes and demo flow live in `../QUICK_ADD_README.md`.
